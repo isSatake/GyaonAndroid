@@ -9,8 +9,11 @@
     android:paddingTop="@dimen/activity_vertical_margin"
     tools:context="com.stkay.gyaonandroid.MainActivity">
 
-    <TextView
+    <Button
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Hello World!" />
+        android:text="Rec"
+        android:id="@+id/rec_button"
+        android:layout_centerVertical="true"
+        android:layout_centerHorizontal="true" />
 </RelativeLayout>
