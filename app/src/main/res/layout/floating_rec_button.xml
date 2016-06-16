@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="100dp"
+    android:layout_height="100dp"
+    android:background="@color/accent_material_dark">
+
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="◉"
+        android:id="@+id/button"
+        android:layout_gravity="center"
+        android:textColor="#ff0000"
+        android:textSize="20dp" />
+</FrameLayout>
