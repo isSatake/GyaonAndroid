@@ -19,16 +19,18 @@ public class FloatingRecButtonService extends Service {
     View button_view;
     WindowManager windowManager;
     WindowManager.LayoutParams layoutParams;
+    GyaonRecorder recorder;
 
     @Override
     public void onCreate() {
         super.onCreate();
         Log.d("Service", "onCreate");
+        recorder = new GyaonRecorder("767fa354e1f2199c6f24194fba79584c");
         layoutParams = new WindowManager.LayoutParams(
                 WindowManager.LayoutParams.WRAP_CONTENT,
                 WindowManager.LayoutParams.WRAP_CONTENT,
                 WindowManager.LayoutParams.TYPE_SYSTEM_ALERT,       // アプリケーションのTOPに配置
-                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE |  // フォーカスを当てない(下の画面の操作がd系なくなるため)
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE |  // フォーカスを当てない(下の画面の操作ができなくなるため)
                         WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL, // モーダル以外のタッチを背後のウィンドウへ送信
                 PixelFormat.TRANSLUCENT
         );
@@ -40,10 +42,10 @@ public class FloatingRecButtonService extends Service {
             public boolean onTouch(View v, MotionEvent event) {
                 if (event.getAction() == MotionEvent.ACTION_DOWN) {
                     Log.d(TAG, "onActionDown");
-//                    recStart();
+                    recorder.start();
                 } else if (event.getAction() == MotionEvent.ACTION_UP) {
                     Log.d(TAG, "onActionUp");
-//                    recStop();
+                    recorder.stop();
                 }
                 return true;
             }
