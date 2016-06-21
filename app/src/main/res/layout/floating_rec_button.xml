@@ -1,12 +1,78 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="wrap_content"
-    android:layout_height="wrap_content"
-    android:background="@color/accent_material_dark">
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
 
-    <Button
-        android:layout_width="wrap_content"
+    <LinearLayout
+        android:layout_width="60dp"
         android:layout_height="wrap_content"
-        android:text="REC"
-        android:id="@+id/button" />
+        android:background="#FFF"
+        android:orientation="vertical"
+        android:id="@+id/rec_button_container">
+
+        <LinearLayout
+            android:id="@+id/handle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="3dp"></FrameLayout>
+
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="3dp" />
+
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="3dp"
+                android:background="#999" />
+
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="3dp" />
+
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="3dp"
+                android:background="#999" />
+
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="3dp" />
+
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="3dp"
+                android:background="#999"/>
+
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="3dp" />
+
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="3dp"
+                android:background="#999" />
+
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="3dp" />
+
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="3dp"
+                android:background="#999" />
+        </LinearLayout>
+
+        <Button
+            android:id="@+id/button"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="REC" />
+
+    </LinearLayout>
+
 </LinearLayout>

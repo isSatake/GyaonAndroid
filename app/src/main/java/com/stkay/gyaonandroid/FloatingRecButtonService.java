@@ -2,6 +2,7 @@ package com.stkay.gyaonandroid;
 
 import android.app.Service;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.graphics.PixelFormat;
 import android.os.IBinder;
 import android.support.annotation.Nullable;
@@ -16,24 +17,28 @@ import android.view.WindowManager;
  */
 public class FloatingRecButtonService extends Service {
     final String TAG = "Service";
-    View button_view;
-    WindowManager windowManager;
-    WindowManager.LayoutParams layoutParams;
-    GyaonRecorder recorder;
+    private View button_view;
+    private WindowManager windowManager;
+    private WindowManager.LayoutParams layoutParams;
+    private GyaonRecorder recorder;
+    private SharedPreferences pref;
 
     @Override
     public void onCreate() {
         super.onCreate();
         Log.d("Service", "onCreate");
-        recorder = new GyaonRecorder("767fa354e1f2199c6f24194fba79584c");
+        recorder = new GyaonRecorder(this);
+        pref = getSharedPreferences("pref", MODE_PRIVATE);
         layoutParams = new WindowManager.LayoutParams(
                 WindowManager.LayoutParams.WRAP_CONTENT,
                 WindowManager.LayoutParams.WRAP_CONTENT,
-                WindowManager.LayoutParams.TYPE_SYSTEM_ALERT,       // アプリケーションのTOPに配置
+                WindowManager.LayoutParams.TYPE_PHONE,       // アプリケーションのTOPに配置
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE |  // フォーカスを当てない(下の画面の操作ができなくなるため)
                         WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL, // モーダル以外のタッチを背後のウィンドウへ送信
                 PixelFormat.TRANSLUCENT
         );
+        layoutParams.x = pref.getInt("buttonX", 0);
+        layoutParams.y = pref.getInt("buttonY", 0);
         windowManager = (WindowManager) this.getSystemService(WINDOW_SERVICE);
         LayoutInflater inflater = LayoutInflater.from(this);
         button_view = inflater.inflate(R.layout.floating_rec_button, null);
@@ -50,19 +55,56 @@ public class FloatingRecButtonService extends Service {
                 return true;
             }
         });
+        button_view.findViewById(R.id.handle).setOnTouchListener(new View.OnTouchListener(){
+            Integer touchX,
+                    touchY,
+                    oldTouchX,
+                    oldTouchY,
+                    initButtonX,
+                    initButtonY;
+            @Override
+            public boolean onTouch(View v, MotionEvent event) {
+                switch (event.getAction()) {
+                    case MotionEvent.ACTION_DOWN:
+                        initButtonX = layoutParams.x;
+                        initButtonY = layoutParams.y;
+                        oldTouchX = (int) event.getRawX();
+                        oldTouchY = (int) event.getRawY();
+                        break;
+                    case MotionEvent.ACTION_MOVE:
+                        touchX = (int) event.getRawX();
+                        touchY = (int) event.getRawY();
+                        layoutParams.x = initButtonX + (touchX - oldTouchX);
+                        layoutParams.y = initButtonY + (touchY - oldTouchY);
+                        windowManager.updateViewLayout(button_view, layoutParams);
+                        break;
+                }
+
+                return true;
+            }
+        });
         windowManager.addView(button_view, layoutParams);
+    }
+
+    @Override
+    public int onStartCommand(Intent intent, int flags, int startId) {
+        recorder.setGyaonId(intent.getStringExtra("gyaonId"));
+        return super.onStartCommand(intent, flags, startId);
     }
 
     @Override
     public void onDestroy() {
         super.onDestroy();
+        SharedPreferences.Editor editor = pref.edit();
+        editor.putInt("buttonX", layoutParams.x);
+        editor.putInt("buttonY", layoutParams.y);
+        editor.commit();
         windowManager.removeView(button_view);
     }
 
     @Nullable
     @Override
     public IBinder onBind(Intent intent) {
-        Log.d(TAG, "onBind");
         return null;
     }
 }

@@ -1,8 +1,11 @@
 package com.stkay.gyaonandroid;
 
+import android.content.Context;
 import android.media.MediaRecorder;
 import android.os.Environment;
+import android.os.Handler;
 import android.util.Log;
+import android.widget.Toast;
 
 import java.io.File;
 import java.io.IOException;
@@ -24,14 +27,21 @@ public class GyaonRecorder {
     private MediaRecorder mediaRecorder = new MediaRecorder();
     private String path = Environment.getExternalStorageDirectory() + "/gyaon.mp3";
     private String gyaonId;
+    private Context context;
+    private Handler handler;
 
-    public GyaonRecorder(String gyaonId) {
-        this.gyaonId = gyaonId;
+    public GyaonRecorder(Context c) {
+        context = c;
+        handler = new Handler();
+    }
+
+    public void setGyaonId(String id){
+        this.gyaonId = id;
     }
 
     public void start() {
         mediaRecorder.setAudioSamplingRate(44100);
-        mediaRecorder.setAudioEncodingBitRate(128000); //24?16?
+        mediaRecorder.setAudioEncodingBitRate(128000);
         mediaRecorder.setAudioSource(MediaRecorder.AudioSource.CAMCORDER);
         mediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
         mediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
@@ -44,13 +54,12 @@ public class GyaonRecorder {
             Log.d(TAG, "rec failed");
             e.printStackTrace();
         }
+        Toast.makeText(context, "Start Recording", Toast.LENGTH_SHORT).show();
     }
 
     public void stop() {
         Log.d(TAG, "rec stop");
-        mediaRecorder.stop();
-        mediaRecorder.reset();
-        upload();
+        handler.postDelayed(stop, 200);
     }
 
     private void upload() {
@@ -79,4 +88,14 @@ public class GyaonRecorder {
             }
         });
     }
+
+    private Runnable stop = new Runnable() {
+        @Override
+        public void run() {
+            mediaRecorder.stop();
+            mediaRecorder.reset();
+            upload();
+            Toast.makeText(context, "Stop Recording", Toast.LENGTH_SHORT).show();
+        }
+    };
 }
