@@ -79,7 +79,6 @@ public class FloatingRecButtonService extends Service {
                         windowManager.updateViewLayout(button_view, layoutParams);
                         break;
                 }
-
                 return true;
             }
         });

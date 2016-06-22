@@ -1,8 +1,12 @@
 package com.stkay.gyaonandroid;
 
+import android.annotation.TargetApi;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.net.Uri;
+import android.os.Build;
+import android.provider.Settings;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
@@ -21,6 +25,7 @@ public class MainActivity extends AppCompatActivity {
     private Intent intent;
     private GyaonRecorder recorder;
     private SharedPreferences pref;
+    private static final int REQUEST_SYSTEM_OVERLAY = 100;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -37,15 +42,17 @@ public class MainActivity extends AppCompatActivity {
         recorder = new GyaonRecorder(this);
         recorder.setGyaonId(gyaonId);
 
-        if (ContextCompat.checkSelfPermission(this, "android.permission.RECORD_AUDIO") != PackageManager.PERMISSION_GRANTED ||
-                ContextCompat.checkSelfPermission(this, "android.permission.WRITE_EXTERNAL_STORAGE") != PackageManager.PERMISSION_GRANTED ||
-                ContextCompat.checkSelfPermission(this, "android.permission.INTERNET") != PackageManager.PERMISSION_GRANTED ||
-                ContextCompat.checkSelfPermission(this, "android.permission.SYSTEM_ALERT_WINDOW") != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this, new String[]{
-                    "android.permission.RECORD_AUDIO",
-                    "android.permission.WRITE_EXTERNAL_STORAGE",
-                    "android.permission.INTERNET",
-                    "android.permission.SYSTEM_ALERT_WINDOW"}, 0);
+        //request permissions
+        if (Build.VERSION.SDK_INT >= 23) {
+            if (ContextCompat.checkSelfPermission(this, "android.permission.RECORD_AUDIO") != PackageManager.PERMISSION_GRANTED ||
+                    ContextCompat.checkSelfPermission(this, "android.permission.WRITE_EXTERNAL_STORAGE") != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(this, new String[]{
+                        "android.permission.RECORD_AUDIO",
+                        "android.permission.WRITE_EXTERNAL_STORAGE"}, 0);
+            }
+            if(!checkOverlayPermission()){
+                requestOverlayPermission();
+            }
         }
 
         if(gyaonId.length() == 32){
@@ -55,9 +62,7 @@ public class MainActivity extends AppCompatActivity {
 
         idEditText.addTextChangedListener(new TextWatcher() {
             @Override
-            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
-
-            }
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
 
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
@@ -77,9 +82,7 @@ public class MainActivity extends AppCompatActivity {
             }
 
             @Override
-            public void afterTextChanged(Editable s) {
-
-            }
+            public void afterTextChanged(Editable s) {}
         });
 
         recButton.setOnTouchListener(new View.OnTouchListener() {
@@ -117,5 +120,23 @@ public class MainActivity extends AppCompatActivity {
 
     private void stopService(){
         stopService(intent);
+    }
+
+    private Boolean checkOverlayPermission() {
+        return Settings.canDrawOverlays(this);
+    }
+
+    public void requestOverlayPermission() {
+        Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + getPackageName()));
+        this.startActivityForResult(intent, REQUEST_SYSTEM_OVERLAY);
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        if (requestCode == REQUEST_SYSTEM_OVERLAY) {
+            if(!checkOverlayPermission()){
+                requestOverlayPermission();
+            }
+        }
     }
 }
