@@ -3,7 +3,6 @@ package com.stkay.gyaonandroid;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
-import android.media.AudioManager;
 import android.net.Uri;
 import android.os.Build;
 import android.provider.Settings;
@@ -39,7 +38,6 @@ public class MainActivity extends AppCompatActivity {
         idEditText.setText(gyaonId);
         recorder = new GyaonRecorder(this);
         recorder.setGyaonId(gyaonId);
-        setVolumeControlStream(AudioManager.STREAM_MUSIC);
 
         //request permissions
         if (Build.VERSION.SDK_INT >= 23) {

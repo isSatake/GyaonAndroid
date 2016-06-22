@@ -23,16 +23,14 @@ import okhttp3.Response;
  * Created by satake on 16/06/16.
  */
 public class GyaonRecorder {
-    private final String TAG = "Recorder";
-    private MediaRecorder mediaRecorder;
-    private String path;
+    final String TAG = "Recorder";
+    private MediaRecorder mediaRecorder = new MediaRecorder();
+    private String path = Environment.getExternalStorageDirectory() + "/gyaon.mp3";
     private String gyaonId;
     private Context context;
     private Handler handler;
 
     public GyaonRecorder(Context c) {
-        mediaRecorder = new MediaRecorder();
-        path = Environment.getExternalStorageDirectory() + "/gyaon.mp3";
         context = c;
         handler = new Handler();
     }
@@ -81,7 +79,7 @@ public class GyaonRecorder {
             @Override
             public void onFailure(Call call, IOException e) {
                 Log.d(TAG, "upload failed");
-
+                e.printStackTrace();
             }
 
             @Override
@@ -96,8 +94,6 @@ public class GyaonRecorder {
         public void run() {
             mediaRecorder.stop();
             mediaRecorder.reset();
-            GyaonPlayer player = new GyaonPlayer();
-            player.play();
             upload();
             Toast.makeText(context, "Stop Recording", Toast.LENGTH_SHORT).show();
         }
