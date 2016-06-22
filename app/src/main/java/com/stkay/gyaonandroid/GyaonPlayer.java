@@ -1,11 +1,7 @@
 package com.stkay.gyaonandroid;
 
-import android.content.Context;
-import android.content.res.AssetFileDescriptor;
 import android.media.MediaPlayer;
-import android.media.MediaRecorder;
 import android.os.Environment;
-import android.os.Handler;
 import android.util.Log;
 
 import java.io.IOException;

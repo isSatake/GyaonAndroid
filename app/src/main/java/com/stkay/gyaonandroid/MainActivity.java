@@ -1,6 +1,5 @@
 package com.stkay.gyaonandroid;
 
-import android.annotation.TargetApi;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
@@ -35,8 +34,6 @@ public class MainActivity extends AppCompatActivity {
         EditText idEditText = (EditText) findViewById(R.id.gyaonId);
         final Button recButton = (Button) findViewById(R.id.rec_button);
         final Button startServiceButton = (Button) findViewById(R.id.start_service_button);
-        recButton.setEnabled(false);
-        startServiceButton.setEnabled(false);
         pref = getSharedPreferences("pref", MODE_PRIVATE);
         gyaonId = pref.getString("gyaonId", "");
         idEditText.setText(gyaonId);
@@ -52,39 +49,29 @@ public class MainActivity extends AppCompatActivity {
                         "android.permission.RECORD_AUDIO",
                         "android.permission.WRITE_EXTERNAL_STORAGE"}, 0);
             }
-            if(!checkOverlayPermission()){
+            if (!checkOverlayPermission()) {
                 requestOverlayPermission();
             }
         }
 
-        if(gyaonId.length() == 32){
-            recButton.setEnabled(true);
-            startServiceButton.setEnabled(true);
-        }
-
         idEditText.addTextChangedListener(new TextWatcher() {
             @Override
-            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-
-            @Override
-            public void onTextChanged(CharSequence s, int start, int before, int count) {
-                Log.d(TAG, start + " " + s.toString());
-                if(start == 31){
-                    gyaonId = s.toString();
-                    SharedPreferences.Editor editor = pref.edit();
-                    editor.putString("gyaonId", gyaonId);
-                    editor.commit();
-                    recorder.setGyaonId(gyaonId);
-                    recButton.setEnabled(true);
-                    startServiceButton.setEnabled(true);
-                }else{
-                    recButton.setEnabled(false);
-                    startServiceButton.setEnabled(false);
-                }
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
             }
 
             @Override
-            public void afterTextChanged(Editable s) {}
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                Log.d(TAG, s.toString());
+                gyaonId = s.toString();
+                SharedPreferences.Editor editor = pref.edit();
+                editor.putString("gyaonId", gyaonId);
+                editor.commit();
+                recorder.setGyaonId(gyaonId);
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+            }
         });
 
         recButton.setOnTouchListener(new View.OnTouchListener() {
@@ -114,13 +101,13 @@ public class MainActivity extends AppCompatActivity {
         stopService();
     }
 
-    private void startService(){
+    private void startService() {
         intent = new Intent(this, FloatingRecButtonService.class);
         intent.putExtra("gyaonId", gyaonId);
         startService(intent);
     }
 
-    private void stopService(){
+    private void stopService() {
         stopService(intent);
     }
 
@@ -136,7 +123,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         if (requestCode == REQUEST_SYSTEM_OVERLAY) {
-            if(!checkOverlayPermission()){
+            if (!checkOverlayPermission()) {
                 requestOverlayPermission();
             }
         }
