@@ -17,10 +17,15 @@ import android.view.WindowManager;
  */
 public class FloatingRecButtonService extends Service {
     final String TAG = "Service";
+
     private View button_view;
+
     private WindowManager windowManager;
+
     private WindowManager.LayoutParams layoutParams;
+
     private GyaonRecorder recorder;
+
     private SharedPreferences pref;
 
     @Override
@@ -97,7 +102,7 @@ public class FloatingRecButtonService extends Service {
         SharedPreferences.Editor editor = pref.edit();
         editor.putInt("buttonX", layoutParams.x);
         editor.putInt("buttonY", layoutParams.y);
-        editor.commit();
+        editor.apply();
         windowManager.removeView(button_view);
     }
 

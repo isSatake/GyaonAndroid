@@ -18,26 +18,39 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 
+import butterknife.ButterKnife;
+
 public class MainActivity extends AppCompatActivity {
     final String TAG = "MainActivity";
+
     private String gyaonId;
+
     private Intent intent;
+
     private GyaonRecorder recorder;
+
     private SharedPreferences pref;
+
     private static final int REQUEST_SYSTEM_OVERLAY = 100;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        EditText idEditText = (EditText) findViewById(R.id.gyaonId);
-        final Button recButton = (Button) findViewById(R.id.rec_button);
-        final Button startServiceButton = (Button) findViewById(R.id.start_service_button);
+
+        EditText idEditText = ButterKnife.findById(this, R.id.gyaonId);
+        final Button recButton = ButterKnife.findById(this, R.id.rec_button);
+        final Button startServiceButton = ButterKnife.findById(this, R.id.start_service_button);
+
         pref = getSharedPreferences("pref", MODE_PRIVATE);
         gyaonId = pref.getString("gyaonId", "");
+        assert idEditText != null;
         idEditText.setText(gyaonId);
+
         recorder = new GyaonRecorder(this);
         recorder.setGyaonId(gyaonId);
+
+        ButterKnife.bind(this);
 
         //request permissions
         if (Build.VERSION.SDK_INT >= 23) {
@@ -63,7 +76,7 @@ public class MainActivity extends AppCompatActivity {
                 gyaonId = s.toString();
                 SharedPreferences.Editor editor = pref.edit();
                 editor.putString("gyaonId", gyaonId);
-                editor.commit();
+                editor.apply();
                 recorder.setGyaonId(gyaonId);
             }
 
@@ -72,6 +85,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+        assert recButton != null;
         recButton.setOnTouchListener(new View.OnTouchListener() {
             @Override
             public boolean onTouch(View v, MotionEvent event) {
