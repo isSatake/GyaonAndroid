@@ -24,10 +24,15 @@ import okhttp3.Response;
  */
 public class GyaonRecorder {
     final String TAG = "Recorder";
+
     private MediaRecorder mediaRecorder = new MediaRecorder();
+
     private String path = Environment.getExternalStorageDirectory() + "/gyaon.mp3";
+
     private String gyaonId;
+
     private Context context;
+
     private Handler handler;
 
     public GyaonRecorder(Context c) {
@@ -66,11 +71,11 @@ public class GyaonRecorder {
         Log.d(TAG, "upload start");
         OkHttpClient client = new OkHttpClient();
         RequestBody requestBody = new MultipartBody.Builder()
+                .addFormDataPart("gyaonId", gyaonId)
                 .addFormDataPart("file", "hoge.mp3", RequestBody.create(MediaType.parse("audio/aac"), new File(path)))
                 .build();
 
         Request request = new Request.Builder()
-                .addHeader("Cookie", "gyaonId=" + gyaonId)
                 .url("https://gyaon.herokuapp.com/upload")
                 .post(requestBody)
                 .build();
