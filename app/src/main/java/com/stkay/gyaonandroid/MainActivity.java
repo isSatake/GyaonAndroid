@@ -13,6 +13,7 @@ import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.util.Log;
+import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
 import android.widget.Button;
@@ -30,6 +31,8 @@ public class MainActivity extends AppCompatActivity {
     private GyaonRecorder recorder;
 
     private SharedPreferences pref;
+
+    private Boolean isRecording = false;
 
     private static final int REQUEST_SYSTEM_OVERLAY = 100;
 
@@ -130,6 +133,21 @@ public class MainActivity extends AppCompatActivity {
     public void requestOverlayPermission() {
         Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + getPackageName()));
         this.startActivityForResult(intent, REQUEST_SYSTEM_OVERLAY);
+    }
+
+    @Override
+    public boolean onKeyDown(int keyCode, KeyEvent event) {
+        if(keyCode == 79){
+            Log.d(TAG, "onKeyDown");
+            if(!isRecording) {
+                isRecording = true;
+                recorder.start();
+                return false;
+            }
+            isRecording = false;
+            recorder.stop();
+        }
+        return false;
     }
 
     @Override
