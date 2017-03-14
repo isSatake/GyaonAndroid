@@ -71,12 +71,11 @@ public class GyaonRecorder {
         Log.d(TAG, "upload start");
         OkHttpClient client = new OkHttpClient();
         RequestBody requestBody = new MultipartBody.Builder()
-                .addFormDataPart("gyaonId", gyaonId)
                 .addFormDataPart("file", "hoge.mp3", RequestBody.create(MediaType.parse("audio/aac"), new File(path)))
                 .build();
 
         Request request = new Request.Builder()
-                .url("https://gyaon.herokuapp.com/upload")
+                .url("https://gyaon.herokuapp.com/upload/" + gyaonId)
                 .post(requestBody)
                 .build();
 
