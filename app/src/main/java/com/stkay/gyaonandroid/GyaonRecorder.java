@@ -23,11 +23,11 @@ import okhttp3.Response;
  * Created by satake on 16/06/16.
  */
 public class GyaonRecorder {
-    final String TAG = "Recorder";
+    private final String TAG = "Recorder";
 
     private MediaRecorder mediaRecorder = new MediaRecorder();
 
-    private String path = Environment.getExternalStorageDirectory() + "/gyaon.mp3";
+    private String path = Environment.getExternalStorageDirectory() + "/gyaon.mp4";
 
     private String gyaonId;
 
@@ -35,19 +35,19 @@ public class GyaonRecorder {
 
     private Handler handler;
 
-    public GyaonRecorder(Context c) {
+    GyaonRecorder(Context c) {
         context = c;
         handler = new Handler();
     }
 
-    public void setGyaonId(String id){
+    void setGyaonId(String id){
         this.gyaonId = id;
     }
 
-    public void start() {
+    void start() {
         mediaRecorder.setAudioSamplingRate(44100);
         mediaRecorder.setAudioEncodingBitRate(128000);
-        mediaRecorder.setAudioSource(MediaRecorder.AudioSource.CAMCORDER);
+        mediaRecorder.setAudioSource(MediaRecorder.AudioSource.VOICE_RECOGNITION);
         mediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
         mediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
         mediaRecorder.setOutputFile(path);
@@ -62,7 +62,7 @@ public class GyaonRecorder {
         Toast.makeText(context, "Start Recording", Toast.LENGTH_SHORT).show();
     }
 
-    public void stop() {
+    void stop() {
         Log.d(TAG, "rec stop");
         handler.postDelayed(stop, 200);
     }
@@ -71,7 +71,8 @@ public class GyaonRecorder {
         Log.d(TAG, "upload start");
         OkHttpClient client = new OkHttpClient();
         RequestBody requestBody = new MultipartBody.Builder()
-                .addFormDataPart("file", "hoge.mp3", RequestBody.create(MediaType.parse("audio/aac"), new File(path)))
+                .setType(MultipartBody.FORM)
+                .addFormDataPart("file", "gyaon.mp4", RequestBody.create(MediaType.parse("audio/aac"), new File(path)))
                 .build();
 
         Request request = new Request.Builder()
