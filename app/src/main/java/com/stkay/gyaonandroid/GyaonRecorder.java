@@ -1,7 +1,12 @@
 package com.stkay.gyaonandroid;
 
 import android.content.Context;
+import android.location.Criteria;
+import android.location.Location;
+import android.location.LocationListener;
+import android.location.LocationManager;
 import android.media.MediaRecorder;
+import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
 import android.util.Log;
@@ -35,12 +40,15 @@ public class GyaonRecorder {
 
     private Handler handler;
 
+    private LocationManager locationManager;
+
     GyaonRecorder(Context c) {
         context = c;
         handler = new Handler();
+        locationManager = (LocationManager) context.getSystemService(Context.LOCATION_SERVICE);
     }
 
-    void setGyaonId(String id){
+    void setGyaonId(String id) {
         this.gyaonId = id;
     }
 
@@ -67,12 +75,14 @@ public class GyaonRecorder {
         handler.postDelayed(stop, 200);
     }
 
-    private void upload() {
+    private void upload(Location location) {
         Log.d(TAG, "upload start");
         OkHttpClient client = new OkHttpClient();
         RequestBody requestBody = new MultipartBody.Builder()
                 .setType(MultipartBody.FORM)
                 .addFormDataPart("file", "gyaon.mp4", RequestBody.create(MediaType.parse("audio/aac"), new File(path)))
+                .addFormDataPart("lat", location.getLatitude() + "")
+                .addFormDataPart("lon", location.getLongitude() + "")
                 .build();
 
         Request request = new Request.Builder()
@@ -96,10 +106,26 @@ public class GyaonRecorder {
 
     private Runnable stop = new Runnable() {
         @Override
-        public void run() {
+        public void run() throws SecurityException{
             mediaRecorder.stop();
             mediaRecorder.reset();
-            upload();
+            Criteria criteria = new Criteria();
+            criteria.setAccuracy(Criteria.ACCURACY_FINE);
+            locationManager.requestSingleUpdate(criteria, new LocationListener() {
+                @Override
+                public void onLocationChanged(Location location) {
+                    upload(location);
+                }
+
+                @Override
+                public void onStatusChanged(String provider, int status, Bundle extras) {}
+
+                @Override
+                public void onProviderEnabled(String provider) {}
+
+                @Override
+                public void onProviderDisabled(String provider) {}
+            }, null);
             Toast.makeText(context, "Stop Recording", Toast.LENGTH_SHORT).show();
         }
     };
