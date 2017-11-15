@@ -1,12 +1,19 @@
 package com.stkay.gyaonandroid;
 
 import android.app.Service;
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.graphics.PixelFormat;
+import android.media.AudioManager;
+import android.media.session.MediaSession;
 import android.os.IBinder;
+import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.util.Log;
+import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
@@ -47,7 +54,7 @@ public class FloatingRecButtonService extends Service {
         windowManager = (WindowManager) this.getSystemService(WINDOW_SERVICE);
         LayoutInflater inflater = LayoutInflater.from(this);
         button_view = inflater.inflate(R.layout.floating_rec_button, null);
-        button_view.findViewById(R.id.button).setOnTouchListener(new View.OnTouchListener(){
+        button_view.findViewById(R.id.button).setOnTouchListener(new View.OnTouchListener() {
             @Override
             public boolean onTouch(View v, MotionEvent event) {
                 if (event.getAction() == MotionEvent.ACTION_DOWN) {
@@ -60,13 +67,14 @@ public class FloatingRecButtonService extends Service {
                 return true;
             }
         });
-        button_view.findViewById(R.id.handle).setOnTouchListener(new View.OnTouchListener(){
+        button_view.findViewById(R.id.handle).setOnTouchListener(new View.OnTouchListener() {
             Integer touchX,
                     touchY,
                     oldTouchX,
                     oldTouchY,
                     initButtonX,
                     initButtonY;
+
             @Override
             public boolean onTouch(View v, MotionEvent event) {
                 switch (event.getAction()) {
@@ -87,6 +95,33 @@ public class FloatingRecButtonService extends Service {
                 return true;
             }
         });
+
+        MediaSession.Callback callback = new MediaSession.Callback() {
+            @Override
+            public boolean onMediaButtonEvent(@NonNull Intent mediaButtonIntent) {
+                KeyEvent event = mediaButtonIntent.getParcelableExtra(Intent.EXTRA_KEY_EVENT);
+                Log.d(TAG, event.toString());
+                if(event.getAction() != KeyEvent.ACTION_DOWN){
+                    return true;
+                }
+                int keyCode = event.getKeyCode();
+                if(keyCode == KeyEvent.KEYCODE_HEADSETHOOK || keyCode == KeyEvent.KEYCODE_MEDIA_PLAY || keyCode == KeyEvent.KEYCODE_MEDIA_PAUSE){
+                    if(recorder.getIsRecording()){
+                        recorder.stop();
+                    }else{
+                        recorder.start();
+                    }
+                    return true;
+                }
+                return false;
+            }
+        };
+
+        MediaSession session = new MediaSession(this, TAG);
+        session.setFlags(MediaSession.FLAG_HANDLES_MEDIA_BUTTONS | MediaSession.FLAG_HANDLES_TRANSPORT_CONTROLS);
+        session.setCallback(callback);
+        session.setActive(true);
+
         windowManager.addView(button_view, layoutParams);
     }
 
