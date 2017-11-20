@@ -1,13 +1,9 @@
 package com.stkay.gyaonandroid;
 
 import android.app.Service;
-import android.content.BroadcastReceiver;
-import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.graphics.PixelFormat;
-import android.media.AudioManager;
 import android.media.session.MediaSession;
 import android.os.IBinder;
 import android.support.annotation.NonNull;
@@ -39,7 +35,7 @@ public class FloatingRecButtonService extends Service {
     public void onCreate() {
         super.onCreate();
         Log.d("Service", "onCreate");
-        recorder = new GyaonRecorder(this);
+        recorder = new GyaonRecorder(this, null);
         pref = getSharedPreferences("pref", MODE_PRIVATE);
         layoutParams = new WindowManager.LayoutParams(
                 WindowManager.LayoutParams.WRAP_CONTENT,
@@ -101,14 +97,14 @@ public class FloatingRecButtonService extends Service {
             public boolean onMediaButtonEvent(@NonNull Intent mediaButtonIntent) {
                 KeyEvent event = mediaButtonIntent.getParcelableExtra(Intent.EXTRA_KEY_EVENT);
                 Log.d(TAG, event.toString());
-                if(event.getAction() != KeyEvent.ACTION_DOWN){
+                if (event.getAction() != KeyEvent.ACTION_DOWN) {
                     return true;
                 }
                 int keyCode = event.getKeyCode();
-                if(keyCode == KeyEvent.KEYCODE_HEADSETHOOK || keyCode == KeyEvent.KEYCODE_MEDIA_PLAY || keyCode == KeyEvent.KEYCODE_MEDIA_PAUSE){
-                    if(recorder.getIsRecording()){
+                if (keyCode == KeyEvent.KEYCODE_HEADSETHOOK || keyCode == KeyEvent.KEYCODE_MEDIA_PLAY || keyCode == KeyEvent.KEYCODE_MEDIA_PAUSE) {
+                    if (recorder.getIsRecording()) {
                         recorder.stop();
-                    }else{
+                    } else {
                         recorder.start();
                     }
                     return true;

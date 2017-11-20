@@ -2,6 +2,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.stkay.gyaonandroid">
 
+    <uses-feature
+        android:name="android.hardware.camera2"
+        android:required="true" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.BLUETOOTH" />
@@ -17,7 +20,8 @@
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:supportsRtl="true"
-        android:theme="@style/AppTheme">
+        android:theme="@style/AppTheme"
+        android:fullBackupContent="false">
         <activity
             android:name=".MainActivity"
             android:screenOrientation="portrait">
@@ -28,6 +32,15 @@
             </intent-filter>
         </activity>
         <service android:name=".FloatingRecButtonService" />
+        <provider
+            android:name="android.support.v4.content.FileProvider"
+            android:authorities="com.stkay.gyaonandroid"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
     </application>
 
 </manifest>
