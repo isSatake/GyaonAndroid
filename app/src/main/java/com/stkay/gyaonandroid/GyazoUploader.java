@@ -88,7 +88,7 @@ class GyazoUploader {
                         final RequestBody linkBody = RequestBody.create(JSON, "{\"imgurl\": \"" + url + "\"}");
 
                         Request request = new Request.Builder()
-                                .url("http://192.168.1.117:3000/image/" + gyaonKey)
+                                .url("https://gyaon.herokuapp.com/image/" + gyaonKey)
                                 .post(linkBody)
                                 .build();
 
