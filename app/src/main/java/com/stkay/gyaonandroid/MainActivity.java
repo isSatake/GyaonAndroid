@@ -39,7 +39,7 @@ import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 
-public class MainActivity extends AppCompatActivity{
+public class MainActivity extends AppCompatActivity {
 
     private String gyaonId;
 
@@ -50,6 +50,8 @@ public class MainActivity extends AppCompatActivity{
     private SharedPreferences pref;
 
     private Uri cameraUri;
+
+    String key;
 
     private static final int REQUEST_SYSTEM_OVERLAY = 100;
 
@@ -99,7 +101,7 @@ public class MainActivity extends AppCompatActivity{
             }
         }
 
-        if (savedInstanceState != null){
+        if (savedInstanceState != null) {
             cameraUri = savedInstanceState.getParcelable(TAG_CAMERA_URI);
         }
 
@@ -151,7 +153,7 @@ public class MainActivity extends AppCompatActivity{
         stopService();
     }
 
-    protected void onSaveInstanceState(Bundle outState){
+    protected void onSaveInstanceState(Bundle outState) {
         outState.putParcelable(TAG_CAMERA_URI, cameraUri);
     }
 
@@ -174,7 +176,7 @@ public class MainActivity extends AppCompatActivity{
         this.startActivityForResult(intent, REQUEST_SYSTEM_OVERLAY);
     }
 
-    private void cameraIntent(){
+    private void cameraIntent() {
         File cameraFolder = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), "IMG");
         cameraFolder.mkdirs();
 
@@ -184,10 +186,10 @@ public class MainActivity extends AppCompatActivity{
         File storageDir = getExternalFilesDir(Environment.DIRECTORY_PICTURES);
         File image;
 
-        try{
+        try {
             image = File.createTempFile(imageFileName, ".jpg", storageDir);
 
-        }catch (IOException e){
+        } catch (IOException e) {
             Toast.makeText(this, "Failed to launch camera", Toast.LENGTH_SHORT).show();
             e.printStackTrace();
             return;
@@ -208,14 +210,15 @@ public class MainActivity extends AppCompatActivity{
                 requestOverlayPermission();
             }
         }
-        if(requestCode == REQUEST_CAMERA){
-                GyazoUploader uploader = new GyazoUploader(this);
-                uploader.uploadImage(cameraUri);
+        if (requestCode == REQUEST_CAMERA) {
+            GyazoUploader uploader = new GyazoUploader(this, gyaonId);
+            uploader.uploadImage(cameraUri, key);
         }
     }
 
     class UploadListener {
-        void onUpload() {
+        void onUpload(String _key) {
+            key = _key;
             cameraIntent();
         }
     }

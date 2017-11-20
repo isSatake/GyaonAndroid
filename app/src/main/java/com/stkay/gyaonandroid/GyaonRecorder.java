@@ -16,6 +16,9 @@ import android.support.annotation.Nullable;
 import android.util.Log;
 import android.widget.Toast;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.io.File;
 import java.io.IOException;
 
@@ -124,9 +127,18 @@ class GyaonRecorder {
 
             @Override
             public void onResponse(Call call, Response response) throws IOException {
-                Log.d(TAG, "gyaon url: " + response.body().string());
-                if (uploadListener != null) {
-                    uploadListener.onUpload();
+                JSONObject res;
+                String key = null;
+                try {
+                    res = new JSONObject(response.body().string());
+                    key = res.getJSONObject("object").get("key").toString();
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+
+                if (key != null) {
+                    Log.d(TAG, "gyaon : " + key);
+                    uploadListener.onUpload(key);
                 }
             }
         });
