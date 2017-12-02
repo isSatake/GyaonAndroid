@@ -43,6 +43,7 @@
 
     <Button
         android:id="@+id/rec_button"
+        style="@style/GyaonButtonStyle"
         android:layout_width="241dp"
         android:layout_height="64dp"
         android:layout_gravity="center_horizontal"

@@ -1,6 +1,7 @@
 package com.stkay.gyaonandroid;
 
 import android.app.Activity;
+import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
@@ -18,6 +19,8 @@ import android.text.TextWatcher;
 import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.Window;
+import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
@@ -31,6 +34,8 @@ import java.util.Locale;
 import butterknife.ButterKnife;
 
 public class MainActivity extends Activity {
+
+    private Context context = this;
 
     private String gyaonId;
 
@@ -123,11 +128,25 @@ public class MainActivity extends Activity {
                 if (event.getAction() == MotionEvent.ACTION_DOWN) {
                     Log.d(TAG, "onActionDown");
                     recorder.start();
+                    changeStatusBarColor(true);
                 } else if (event.getAction() == MotionEvent.ACTION_UP) {
                     Log.d(TAG, "onActionUp");
                     recorder.stop();
+                    changeStatusBarColor(false);
                 }
-                return true;
+                return false;
+            }
+
+            private void changeStatusBarColor(boolean isRec) {
+                Activity activity = (Activity) context;
+                Window window = activity.getWindow();
+                if (isRec) {
+                    window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
+                    window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);
+                    window.setStatusBarColor(ContextCompat.getColor(activity, R.color.colorRecording));
+                }else{
+                    window.setStatusBarColor(ContextCompat.getColor(activity, R.color.colorPrimaryDark));
+                }
             }
         });
         startServiceButton.setOnClickListener(new View.OnClickListener() {
