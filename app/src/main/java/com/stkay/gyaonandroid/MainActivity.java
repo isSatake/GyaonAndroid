@@ -1,22 +1,19 @@
 package com.stkay.gyaonandroid;
 
+import android.app.Activity;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
-import android.database.Cursor;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
 import android.provider.Settings;
-import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v4.content.FileProvider;
-import android.support.v7.app.AppCompatActivity;
 import android.text.Editable;
-import android.text.TextUtils;
 import android.text.TextWatcher;
 import android.util.Log;
 import android.view.MotionEvent;
@@ -32,14 +29,8 @@ import java.util.Date;
 import java.util.Locale;
 
 import butterknife.ButterKnife;
-import okhttp3.MediaType;
-import okhttp3.MultipartBody;
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.RequestBody;
-import okhttp3.Response;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends Activity {
 
     private String gyaonId;
 
@@ -177,11 +168,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void cameraIntent() {
-        File cameraFolder = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), "IMG");
-        cameraFolder.mkdirs();
-
         String timeStamp = new SimpleDateFormat("yyyyMMddHHmmss", Locale.JAPAN).format(new Date());
-
         String imageFileName = "JPEG-" + timeStamp + "-";
         File storageDir = getExternalFilesDir(Environment.DIRECTORY_PICTURES);
         File image;
