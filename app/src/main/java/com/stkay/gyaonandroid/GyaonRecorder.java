@@ -149,6 +149,7 @@ class GyaonRecorder {
         public void run() throws SecurityException {
             mediaRecorder.stop();
             mediaRecorder.reset();
+
             Criteria criteria = new Criteria();
             criteria.setAccuracy(Criteria.ACCURACY_FINE);
             locationManager.requestSingleUpdate(criteria, new LocationListener() {

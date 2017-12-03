@@ -31,23 +31,17 @@
             android:id="@+id/texture"
             android:layout_width="match_parent"
             android:layout_height="380dp" />
-
-        <ImageView
-            android:id="@+id/result"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:layout_gravity="center_horizontal"
-            android:visibility="gone" />
     </FrameLayout>
 
 
     <Button
         android:id="@+id/rec_button"
         style="@style/GyaonButtonStyle"
-        android:layout_width="241dp"
+        android:layout_width="240dp"
         android:layout_height="64dp"
         android:layout_gravity="center_horizontal"
         android:layout_marginTop="20dp"
+        android:enabled="false"
         android:text="REC" />
 
     <Button
