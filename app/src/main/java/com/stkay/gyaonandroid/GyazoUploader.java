@@ -59,7 +59,7 @@ class GyazoUploader {
                 }
 
                 if (url != null) {
-                    Log.d(TAG, "link " + url);
+                    Log.d(TAG, "Succeeded to upload image " + url);
                     final OkHttpClient updateLinkClient = new OkHttpClient();
                     final MediaType JSON = MediaType.parse("application/json; charset=utf-8");
 

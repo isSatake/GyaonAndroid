@@ -23,16 +23,15 @@
 
     <FrameLayout
         android:layout_width="240dp"
-        android:layout_height="380dp"
+        android:layout_height="320dp"
         android:layout_gravity="center_horizontal"
         tools:ignore="UselessParent">
 
         <TextureView
             android:id="@+id/texture"
             android:layout_width="match_parent"
-            android:layout_height="380dp" />
+            android:layout_height="320dp" />
     </FrameLayout>
-
 
     <Button
         android:id="@+id/rec_button"

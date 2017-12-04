@@ -72,8 +72,6 @@ public class MainActivity extends Activity {
 
     private Uri cameraUri;
 
-    String key;
-
     private CameraDevice camera;
 
     private CameraCaptureSession captureSession;
@@ -93,6 +91,8 @@ public class MainActivity extends Activity {
     private boolean isProcessing = false;
 
     private boolean isFinishedRecording = false;
+
+    private File file;
 
     private static final String TAG = "MainActivity";
 
@@ -156,10 +156,8 @@ public class MainActivity extends Activity {
                     Log.d(TAG, "onActionUp");
                     isFinishedRecording = true;
                     recorder.stop();
+                    changeRecButtonState(false);
                     changeStatusBarColor(false);
-                    //カメラプレビュー終了
-                    //撮影
-                    //結果表示
                 }
                 return false;
             }
@@ -177,11 +175,12 @@ public class MainActivity extends Activity {
             }
         });
 
-        initSurfaces();
         ButterKnife.bind(this);
     }
 
     private void initSurfaces() {
+        Log.d(TAG, "initSurfaces");
+
         if(textureView == null){
             textureView = ButterKnife.findById(this, R.id.texture);
         }
@@ -196,8 +195,15 @@ public class MainActivity extends Activity {
     }
 
     @Override
-    protected void onDestroy() {
-        super.onDestroy();
+    protected void onPause() {
+        super.onPause();
+        closeCamera(camera);
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        initSurfaces();
     }
 
     protected void onSaveInstanceState(Bundle outState) {
@@ -206,8 +212,16 @@ public class MainActivity extends Activity {
 
     class UploadListener {
         void onUpload(String _key) {
-            key = _key;
-//            cameraIntent();
+            Activity activity = (Activity) context;
+            activity.runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    changeRecButtonState(true);
+                }
+            });
+            if(file != null) {
+                GyazoUploader.uploadImage(file, _key);
+            }
         }
     }
 
@@ -426,10 +440,7 @@ public class MainActivity extends Activity {
             ByteBuffer buf = image.getPlanes()[0].getBuffer();
             byte[] bytes = new byte[buf.capacity()];
             buf.get(bytes);
-            File file = saveByteToFile(bytes);
-            if(file != null) {
-                GyazoUploader.uploadImage(file, key);
-            }
+            file = saveByteToFile(bytes);
             image.close();
             initSurfaces();
         }
