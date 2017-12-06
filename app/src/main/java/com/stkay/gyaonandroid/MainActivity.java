@@ -40,6 +40,7 @@ import android.view.Window;
 import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ProgressBar;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -61,6 +62,8 @@ public class MainActivity extends Activity {
     private String gyaonId;
 
     private Button recButton;
+
+    private ProgressBar uploadProgress;
 
     private GyaonRecorder recorder;
 
@@ -103,15 +106,20 @@ public class MainActivity extends Activity {
 
         EditText idEditText = ButterKnife.findById(this, R.id.gyaonId);
         recButton = ButterKnife.findById(this, R.id.rec_button);
+        uploadProgress = ButterKnife.findById(this, R.id.upload_progress);
+        //60    音声アップロード
+        //80    写真保存
+        //90    写真アップロード
+        //100   写真リンク
 
         pref = getSharedPreferences("pref", MODE_PRIVATE);
         gyaonId = pref.getString("gyaonId", "");
         assert idEditText != null;
         idEditText.setText(gyaonId);
 
-        UploadListener uploadListener = new UploadListener();
+        GyaonListener gyaonListener = new GyaonListener();
 
-        recorder = new GyaonRecorder(this, uploadListener);
+        recorder = new GyaonRecorder(this, gyaonListener);
         recorder.setGyaonId(gyaonId);
 
         if (savedInstanceState != null) {
@@ -152,6 +160,7 @@ public class MainActivity extends Activity {
                     Log.d(TAG, "onActionUp");
                     isFinishedRecording = true;
                     recorder.stop();
+                    uploadProgress.setProgress(0);
                     changeRecButtonState(false);
                     changeStatusBarColor(false);
                 }
@@ -206,18 +215,28 @@ public class MainActivity extends Activity {
         outState.putParcelable(TAG_CAMERA_URI, cameraUri);
     }
 
-    class UploadListener {
+    class GyaonListener {
         void onUpload(String _key) {
             Activity activity = (Activity) context;
             activity.runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
+                    uploadProgress.incrementProgressBy(60);
                     changeRecButtonState(true);
                 }
             });
             if (file != null) {
-                GyazoUploader.uploadImage(file, _key);
+                GyazoUploader.uploadImage(file, _key, new GyazoListener());
             }
+        }
+    }
+
+    class GyazoListener {
+        void onUpload(){
+            uploadProgress.incrementProgressBy(10);
+        }
+        void onLink(){
+            uploadProgress.incrementProgressBy(10);
         }
     }
 
@@ -440,6 +459,7 @@ public class MainActivity extends Activity {
             byte[] bytes = new byte[buf.capacity()];
             buf.get(bytes);
             file = saveByteToFile(bytes);
+            uploadProgress.incrementProgressBy(20);
             image.close();
             initSurfaces();
         }

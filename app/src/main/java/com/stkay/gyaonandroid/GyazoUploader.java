@@ -23,7 +23,7 @@ import okhttp3.Response;
  */
 
 class GyazoUploader {
-    static void uploadImage(final File file, final String gyaonKey) {
+    static void uploadImage(final File file, final String gyaonKey, final MainActivity.GyazoListener gyazoListener) {
         final String TAG = "Gyazo";
         final OkHttpClient gyazoUpClient = new OkHttpClient();
         final String type = MimeTypeMap.getFileExtensionFromUrl(file.getAbsolutePath());
@@ -60,6 +60,7 @@ class GyazoUploader {
 
                 if (url != null) {
                     Log.d(TAG, "Succeeded to upload image " + url);
+                    gyazoListener.onUpload();
                     final OkHttpClient updateLinkClient = new OkHttpClient();
                     final MediaType JSON = MediaType.parse("application/json; charset=utf-8");
 
@@ -81,6 +82,7 @@ class GyazoUploader {
                         @Override
                         public void onResponse(Call call, Response response) throws IOException {
                             Log.d(TAG, "Succeeded to link image");
+                            gyazoListener.onLink();
                         }
                     });
                 }

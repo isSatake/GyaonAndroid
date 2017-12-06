@@ -1,17 +1,14 @@
 package com.stkay.gyaonandroid;
 
 import android.content.Context;
-import android.content.Intent;
 import android.location.Criteria;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
-import android.media.AudioManager;
 import android.media.MediaRecorder;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
-import android.provider.MediaStore;
 import android.support.annotation.Nullable;
 import android.util.Log;
 import android.widget.Toast;
@@ -56,13 +53,13 @@ class GyaonRecorder {
     }
 
     @Nullable
-    private MainActivity.UploadListener uploadListener;
+    private MainActivity.GyaonListener gyaonListener;
 
-    GyaonRecorder(Context c, @Nullable MainActivity.UploadListener _uploadListener) {
+    GyaonRecorder(Context c, @Nullable MainActivity.GyaonListener _gyaonListener) {
         context = c;
         handler = new Handler();
         locationManager = (LocationManager) context.getSystemService(Context.LOCATION_SERVICE);
-        uploadListener = _uploadListener;
+        gyaonListener = _gyaonListener;
     }
 
     void setGyaonId(String id) {
@@ -138,7 +135,7 @@ class GyaonRecorder {
 
                 if (key != null) {
                     Log.d(TAG, "gyaon : " + key);
-                    uploadListener.onUpload(key);
+                    gyaonListener.onUpload(key);
                 }
             }
         });
