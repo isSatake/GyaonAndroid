@@ -6,7 +6,6 @@ import android.app.Activity;
 import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Context;
-import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.ImageFormat;
@@ -27,10 +26,8 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
 import android.provider.MediaStore;
-import android.provider.Settings;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
-import android.support.v4.content.FileProvider;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.util.Log;
@@ -43,7 +40,6 @@ import android.view.Window;
 import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.EditText;
-import android.widget.Toast;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -181,12 +177,12 @@ public class MainActivity extends Activity {
     private void initSurfaces() {
         Log.d(TAG, "initSurfaces");
 
-        if(textureView == null){
+        if (textureView == null) {
             textureView = ButterKnife.findById(this, R.id.texture);
         }
         textureView.setSurfaceTextureListener(previewSurfaceTextureListener); //View準備完了コールバック
 
-        imageReader = ImageReader.newInstance(960, 720, ImageFormat.JPEG, 2); //ImageReader初期化
+        imageReader = ImageReader.newInstance(960, 72, ImageFormat.JPEG, 2); //ImageReader初期化
         imageReader.setOnImageAvailableListener(stillImageReaderAvailableListener, backgroundHandler); //ImageReader準備完了コールバック
     }
 
@@ -219,7 +215,7 @@ public class MainActivity extends Activity {
                     changeRecButtonState(true);
                 }
             });
-            if(file != null) {
+            if (file != null) {
                 GyazoUploader.uploadImage(file, _key);
             }
         }
@@ -286,6 +282,9 @@ public class MainActivity extends Activity {
     //撮影前のプレビュー用リクエストを作成
     private CaptureRequest makePreviewRequest() {
         CaptureRequest.Builder previewRequestBuilder = null;
+        if(camera == null){
+            openCamera();
+        }
         try {
             previewRequestBuilder = camera.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
         } catch (CameraAccessException e) {
