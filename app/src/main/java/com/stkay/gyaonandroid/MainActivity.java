@@ -6,6 +6,7 @@ import android.app.Activity;
 import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.ImageFormat;
@@ -25,6 +26,8 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
+import android.preference.Preference;
+import android.preference.PreferenceFragment;
 import android.provider.MediaStore;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
@@ -41,6 +44,7 @@ import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.FrameLayout;
+import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
@@ -60,11 +64,15 @@ import butterknife.ButterKnife;
 
 public class MainActivity extends Activity {
 
+    private final String GYAON_ID_KEY = "gyaonId";
+
     private Context context = this;
 
     private String gyaonId;
 
     private Button recButton;
+
+    private ImageButton preferenceButton;
 
     private ProgressBar uploadProgress;
 
@@ -111,43 +119,21 @@ public class MainActivity extends Activity {
         requestAppPermissions();
         setContentView(R.layout.activity_main);
 
-        EditText idEditText = ButterKnife.findById(this, R.id.gyaonId);
         recButton = ButterKnife.findById(this, R.id.rec_button);
+        preferenceButton = ButterKnife.findById(this, R.id.pref_button);
         uploadProgress = ButterKnife.findById(this, R.id.upload_progress);
         captureProgress = ButterKnife.findById(this, R.id.capture_progress);
         textureFrame = ButterKnife.findById(this, R.id.texture_frame);
-
-        pref = getSharedPreferences("pref", MODE_PRIVATE);
-        gyaonId = pref.getString("gyaonId", "");
-        assert idEditText != null;
-        idEditText.setText(gyaonId);
-
-        GyaonListener gyaonListener = new GyaonListener();
-
-        recorder = new GyaonRecorder(this, gyaonListener);
-        recorder.setGyaonId(gyaonId);
 
         if (savedInstanceState != null) {
             cameraUri = savedInstanceState.getParcelable(TAG_CAMERA_URI);
         }
 
-        idEditText.addTextChangedListener(new TextWatcher() {
+        preferenceButton.setOnClickListener(new View.OnClickListener() {
             @Override
-            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
-            }
-
-            @Override
-            public void onTextChanged(CharSequence s, int start, int before, int count) {
-                Log.d(TAG, s.toString());
-                gyaonId = s.toString();
-                SharedPreferences.Editor editor = pref.edit();
-                editor.putString("gyaonId", gyaonId);
-                editor.apply();
-                recorder.setGyaonId(gyaonId);
-            }
-
-            @Override
-            public void afterTextChanged(Editable s) {
+            public void onClick(View v) {
+                Intent intent = new Intent(context, SettingActivity.class);
+                startActivity(intent);
             }
         });
 
@@ -197,10 +183,10 @@ public class MainActivity extends Activity {
         if (textureView == null) {
             textureView = ButterKnife.findById(this, R.id.texture);
         }
-        textureView.setSurfaceTextureListener(previewSurfaceTextureListener); //View準備完了コールバック
+        textureView.setSurfaceTextureListener(previewSurfaceTextureListener);
 
-        imageReader = ImageReader.newInstance(720, 960, ImageFormat.JPEG, 2); //ImageReader初期化
-        imageReader.setOnImageAvailableListener(stillImageReaderAvailableListener, backgroundHandler); //ImageReader準備完了コールバック
+        imageReader = ImageReader.newInstance(720, 960, ImageFormat.JPEG, 2);
+        imageReader.setOnImageAvailableListener(stillImageReaderAvailableListener, backgroundHandler);
     }
 
     private void changeRecButtonState(boolean isEnabled) {
@@ -216,6 +202,15 @@ public class MainActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+
+        pref = getSharedPreferences("pref", MODE_PRIVATE);
+        gyaonId = pref.getString(GYAON_ID_KEY, "");
+        Log.d(TAG, "GYAON ID : " + gyaonId);
+
+        GyaonListener gyaonListener = new GyaonListener();
+        recorder = new GyaonRecorder(this, gyaonListener);
+        recorder.setGyaonId(gyaonId);
+
         initSurfaces();
     }
 
@@ -248,7 +243,6 @@ public class MainActivity extends Activity {
         }
     }
 
-    //カメラと接続
     private void openCamera() {
         Log.d(TAG, "openCamera");
         CameraManager manager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
@@ -265,20 +259,13 @@ public class MainActivity extends Activity {
         }
     }
 
-    //カメラから画像を取得する
-    //この手続をCameraPreviewSessionと呼んでいる
     private void createCameraPreviewSession() {
         Log.d(TAG, "createCameraPreviewSession");
 
-        //カメラ画像を流すSurfaceを設定(複数可)
-        List<Surface> outputs = Arrays.asList(getSurfaceFromTexture(textureView), imageReader.getSurface()); //各リクエストで出力先を設定してるのになぜここでも必要なのか
+        List<Surface> outputs = Arrays.asList(getSurfaceFromTexture(textureView), imageReader.getSurface());
         previewRequest = makePreviewRequest();
         stillRequest = makeStillCaptureRequest();
 
-        //カメラに画像をくれと言う
-        //プレビュー用、撮影用といった複数の出力先(Surface)と、状態遷移(AF,AE,撮影,etc)のコールバックを渡す
-        //このsessionは、別のsessionをattachする/cameraがcloseされる まで生き続ける
-        //急にcloseされても、作業途中のsessionはちゃんと完了される
         try {
             camera.createCaptureSession(outputs, captureSessionCallBack, null);
         } catch (CameraAccessException e) {
@@ -286,7 +273,6 @@ public class MainActivity extends Activity {
         }
     }
 
-    //静止画撮影用リクエストを作成
     private CaptureRequest makeStillCaptureRequest() {
         CaptureRequest.Builder stillCaptureRequestBuilder = null;
         try {
@@ -306,7 +292,6 @@ public class MainActivity extends Activity {
         return stillCaptureRequestBuilder.build();
     }
 
-    //撮影前のプレビュー用リクエストを作成
     private CaptureRequest makePreviewRequest() {
         CaptureRequest.Builder previewRequestBuilder = null;
         if(camera == null){
@@ -317,8 +302,8 @@ public class MainActivity extends Activity {
         } catch (CameraAccessException e) {
             e.printStackTrace();
         }
-        previewRequestBuilder.addTarget(getSurfaceFromTexture(textureView)); //カメラ画像を流すSurfaceをセット
-        return previewRequestBuilder.build(); //リクエスト完成
+        previewRequestBuilder.addTarget(getSurfaceFromTexture(textureView));
+        return previewRequestBuilder.build();
     }
 
     private Surface getSurfaceFromTexture(TextureView textureView) {
@@ -327,9 +312,7 @@ public class MainActivity extends Activity {
         return new Surface(texture);
     }
 
-    //CaptureSessionの状態遷移コールバック
     private CameraCaptureSession.StateCallback captureSessionCallBack = new CameraCaptureSession.StateCallback() {
-        //カメラの設定が完了した (最初の1回だけ)
         @Override
         public void onConfigured(CameraCaptureSession session) {
             Log.d(TAG, "capture session onConfigured");
@@ -346,8 +329,6 @@ public class MainActivity extends Activity {
         }
     };
 
-    //撮影前プレビュー用リクエストを投げる
-    //setRepeatingRequest→30FPSでカメラ画像を送ってくれる→targetとして設定したtextureViewにカメラ画像が見える
     private void startPreview() {
         Log.d(TAG, "Start preview");
         try {
@@ -366,27 +347,22 @@ public class MainActivity extends Activity {
         }
     }
 
-    //撮影用リクエストを投げる
     private void startCapture() {
         Log.d(TAG, "Start capture");
         try {
             isProcessing = true;
             stopPreview();
-            //1回しかリクエストできない→1フレームしか画像を取れない→AF/AEしてる暇がない→AF/AEはsetRepeatingRequestでやらないといけない
             captureSession.capture(stillRequest, stillCallback, null);
         } catch (CameraAccessException e) {
             e.printStackTrace();
         }
     }
 
-    //プレビューリクエストのコールバック
-    //画像はViewで受け取るので渡ってこない
     private final CameraCaptureSession.CaptureCallback previewCallback = new CameraCaptureSession.CaptureCallback() {
         @Override
         public void onCaptureProgressed(CameraCaptureSession session, CaptureRequest request, CaptureResult partialResult) {
         }
 
-        //stopRepeatingしても数回発火してしまう
         @Override
         public void onCaptureCompleted(CameraCaptureSession session, CaptureRequest request, TotalCaptureResult result) {
             if (!isProcessing &&
@@ -399,7 +375,6 @@ public class MainActivity extends Activity {
         }
     };
 
-    //撮影リクエストのコールバック
     private final CameraCaptureSession.CaptureCallback stillCallback = new CameraCaptureSession.CaptureCallback() {
         @Override
         public void onCaptureProgressed(CameraCaptureSession session, CaptureRequest request, CaptureResult partialResult) {

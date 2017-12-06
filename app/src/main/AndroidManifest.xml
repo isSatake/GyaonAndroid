@@ -32,6 +32,9 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity
+            android:name=".SettingActivity"
+            android:screenOrientation="portrait"/>
         <service android:name=".FloatingRecButtonService" />
         <provider
             android:name="android.support.v4.content.FileProvider"
