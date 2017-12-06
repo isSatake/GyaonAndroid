@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -22,6 +23,7 @@
         android:layout_height="wrap_content" />
 
     <FrameLayout
+        android:id="@+id/texture_frame"
         android:layout_width="240dp"
         android:layout_height="320dp"
         android:layout_gravity="center_horizontal"
@@ -29,8 +31,20 @@
 
         <TextureView
             android:id="@+id/texture"
+            style="@android:style/Widget.DeviceDefault.Light.ProgressBar.Small"
             android:layout_width="match_parent"
             android:layout_height="320dp" />
+
+        <ProgressBar
+            android:id="@+id/capture_progress"
+            android:layout_width="30dp"
+            android:layout_height="30dp"
+            android:layout_gravity="bottom|right"
+            android:indeterminate="true"
+            android:indeterminateBehavior="cycle"
+            android:progress="100"
+            android:visibility="gone" />
+
     </FrameLayout>
 
     <Button
@@ -55,7 +69,6 @@
         android:id="@+id/upload_progress"
         style="?android:attr/progressBarStyleHorizontal"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:progress="0" />
+        android:layout_height="wrap_content" />
 
 </LinearLayout>

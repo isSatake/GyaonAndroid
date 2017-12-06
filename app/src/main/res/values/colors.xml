@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="colorPrimaryDark">#757575</color>
+    <color name="colorAccentGreen">@color/accent_material_light</color>
     <color name="colorAccent">#DA6272</color>
     <color name="colorRecording">#FF9800</color>
     <color name="recbutton_pressed">@color/colorRecording</color>

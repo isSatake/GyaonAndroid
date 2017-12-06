@@ -40,7 +40,10 @@ import android.view.Window;
 import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.ProgressBar;
+import android.widget.TextView;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -64,6 +67,10 @@ public class MainActivity extends Activity {
     private Button recButton;
 
     private ProgressBar uploadProgress;
+
+    private ProgressBar captureProgress;
+
+    private FrameLayout textureFrame;
 
     private GyaonRecorder recorder;
 
@@ -107,10 +114,8 @@ public class MainActivity extends Activity {
         EditText idEditText = ButterKnife.findById(this, R.id.gyaonId);
         recButton = ButterKnife.findById(this, R.id.rec_button);
         uploadProgress = ButterKnife.findById(this, R.id.upload_progress);
-        //60    音声アップロード
-        //80    写真保存
-        //90    写真アップロード
-        //100   写真リンク
+        captureProgress = ButterKnife.findById(this, R.id.capture_progress);
+        textureFrame = ButterKnife.findById(this, R.id.texture_frame);
 
         pref = getSharedPreferences("pref", MODE_PRIVATE);
         gyaonId = pref.getString("gyaonId", "");
@@ -155,12 +160,14 @@ public class MainActivity extends Activity {
                     isFinishedRecording = false;
                     recorder.start();
                     changeStatusBarColor(true);
+                    textureFrame.setBackground(null);
                     createCameraPreviewSession(); //カメラプレビュー開始
                 } else if (event.getAction() == MotionEvent.ACTION_UP) {
                     Log.d(TAG, "onActionUp");
                     isFinishedRecording = true;
                     recorder.stop();
                     uploadProgress.setProgress(0);
+                    captureProgress.setVisibility(View.VISIBLE);
                     changeRecButtonState(false);
                     changeStatusBarColor(false);
                 }
@@ -185,13 +192,14 @@ public class MainActivity extends Activity {
 
     private void initSurfaces() {
         Log.d(TAG, "initSurfaces");
+        captureProgress.setVisibility(View.GONE);
 
         if (textureView == null) {
             textureView = ButterKnife.findById(this, R.id.texture);
         }
         textureView.setSurfaceTextureListener(previewSurfaceTextureListener); //View準備完了コールバック
 
-        imageReader = ImageReader.newInstance(960, 72, ImageFormat.JPEG, 2); //ImageReader初期化
+        imageReader = ImageReader.newInstance(720, 960, ImageFormat.JPEG, 2); //ImageReader初期化
         imageReader.setOnImageAvailableListener(stillImageReaderAvailableListener, backgroundHandler); //ImageReader準備完了コールバック
     }
 
@@ -401,6 +409,8 @@ public class MainActivity extends Activity {
         public void onCaptureCompleted(CameraCaptureSession session, CaptureRequest request, TotalCaptureResult result) {
             Log.d(TAG, "onStillCaptureCompleted");
             isProcessing = false;
+            captureProgress.setVisibility(View.GONE);
+            textureFrame.setBackground(getDrawable(R.drawable.texture_frame_border));
         }
     };
 
