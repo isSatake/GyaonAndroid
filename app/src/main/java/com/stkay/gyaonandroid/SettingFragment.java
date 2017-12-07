@@ -13,22 +13,22 @@ import static android.content.Context.MODE_PRIVATE;
 
 public class SettingFragment extends PreferenceFragment {
 
-    private final String GYAON_ID_KEY = "gyaonId";
-
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
+        final String GYAON_ID_KEY = getString(R.string.id_key);
+
         super.onCreate(savedInstanceState);
         addPreferencesFromResource(R.xml.preferences);
 
-        final String id = getActivity().getSharedPreferences("pref", MODE_PRIVATE).getString(GYAON_ID_KEY, "");
+        final String id = getActivity().getSharedPreferences(getString(R.string.pref_file_name), MODE_PRIVATE).getString(GYAON_ID_KEY, "");
         final Preference idPref = findPreference(GYAON_ID_KEY);
         idPref.setSummary(id);
 
         idPref.setOnPreferenceChangeListener(new Preference.OnPreferenceChangeListener() {
             @Override
             public boolean onPreferenceChange(Preference preference, Object newValue) {
-                idPref.setSummary(id);
-                return false;
+                preference.setSummary(newValue.toString());
+                return true;
             }
         });
     }

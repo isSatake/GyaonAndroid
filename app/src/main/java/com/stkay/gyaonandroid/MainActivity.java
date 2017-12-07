@@ -26,13 +26,9 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
-import android.preference.Preference;
-import android.preference.PreferenceFragment;
 import android.provider.MediaStore;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
-import android.text.Editable;
-import android.text.TextWatcher;
 import android.util.Log;
 import android.util.SparseIntArray;
 import android.view.MotionEvent;
@@ -42,12 +38,9 @@ import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
 import android.widget.Button;
-import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.ImageButton;
-import android.widget.ImageView;
 import android.widget.ProgressBar;
-import android.widget.TextView;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -62,9 +55,7 @@ import java.util.Locale;
 
 import butterknife.ButterKnife;
 
-public class MainActivity extends Activity {
-
-    private final String GYAON_ID_KEY = "gyaonId";
+public class MainActivity extends Activity implements SharedPreferences.OnSharedPreferenceChangeListener{
 
     private Context context = this;
 
@@ -203,8 +194,8 @@ public class MainActivity extends Activity {
     protected void onResume() {
         super.onResume();
 
-        pref = getSharedPreferences("pref", MODE_PRIVATE);
-        gyaonId = pref.getString(GYAON_ID_KEY, "");
+        pref = getSharedPreferences(getString(R.string.pref_file_name), MODE_PRIVATE);
+        gyaonId = pref.getString(getString(R.string.id_key), "");
         Log.d(TAG, "GYAON ID : " + gyaonId);
 
         GyaonListener gyaonListener = new GyaonListener();
@@ -216,6 +207,13 @@ public class MainActivity extends Activity {
 
     protected void onSaveInstanceState(Bundle outState) {
         outState.putParcelable(TAG_CAMERA_URI, cameraUri);
+    }
+
+    @Override
+    public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
+        if (key.equals(getString(R.string.id_key))) {
+            gyaonId = sharedPreferences.getString(getString(R.string.id_key), "masuilab");
+        }
     }
 
     class GyaonListener {

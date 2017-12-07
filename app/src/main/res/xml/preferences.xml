@@ -1,8 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
-    <PreferenceCategory android:title="設定">
+    <PreferenceCategory
+        android:title="設定">
+
         <EditTextPreference
-            android:key="gyaonId"
+            android:key="@string/id_key"
             android:title="録音先のGyaon Id" />
+
     </PreferenceCategory>
 </PreferenceScreen>
