@@ -27,4 +27,5 @@ dependencies {
     compile 'com.squareup.okhttp3:okhttp:3.0.1'
     compile 'com.deploygate:sdk:3.1'
     compile 'com.jakewharton:butterknife:8.4.0'
+    compile 'com.github.google:cameraview:d0b508a5ea'
 }

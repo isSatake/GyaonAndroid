@@ -1,6 +1,5 @@
 package com.stkay.gyaonandroid;
 
-import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.ContentResolver;
@@ -9,53 +8,37 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
-import android.graphics.ImageFormat;
-import android.graphics.SurfaceTexture;
-import android.hardware.camera2.CameraAccessException;
-import android.hardware.camera2.CameraCaptureSession;
-import android.hardware.camera2.CameraCharacteristics;
-import android.hardware.camera2.CameraDevice;
-import android.hardware.camera2.CameraManager;
-import android.hardware.camera2.CaptureRequest;
-import android.hardware.camera2.CaptureResult;
-import android.hardware.camera2.TotalCaptureResult;
-import android.media.Image;
-import android.media.ImageReader;
-import android.net.Uri;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
-import android.os.Handler;
 import android.provider.MediaStore;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.util.Log;
-import android.util.SparseIntArray;
 import android.view.MotionEvent;
-import android.view.Surface;
-import android.view.TextureView;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
 import android.widget.Button;
-import android.widget.FrameLayout;
 import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.widget.ProgressBar;
+
+import com.google.android.cameraview.CameraView;
 
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.nio.ByteBuffer;
 import java.text.SimpleDateFormat;
-import java.util.Arrays;
 import java.util.Date;
-import java.util.List;
 import java.util.Locale;
 
 import butterknife.ButterKnife;
 
-public class MainActivity extends Activity implements SharedPreferences.OnSharedPreferenceChangeListener{
+public class MainActivity extends Activity implements SharedPreferences.OnSharedPreferenceChangeListener {
 
     private Context context = this;
 
@@ -67,384 +50,38 @@ public class MainActivity extends Activity implements SharedPreferences.OnShared
 
     private ProgressBar uploadProgress;
 
-    private ProgressBar captureProgress;
+    private CameraView cameraView;
 
-    private FrameLayout textureFrame;
+    private View previewFrame;
+
+    private ImageView previewView;
 
     private GyaonRecorder recorder;
 
     private SharedPreferences pref;
 
-    private Uri cameraUri;
-
-    private CameraDevice camera;
-
-    private CameraCaptureSession captureSession;
-
-    private CaptureRequest previewRequest;
-
-    private CaptureRequest stillRequest;
-
-    private String selectedCameraId;
-
-    private TextureView textureView;
-
-    private ImageReader imageReader;
-
-    private Handler backgroundHandler = new Handler();
-
-    private boolean isProcessing = false;
-
-    private boolean isFinishedRecording = false;
-
     private File file;
 
     private static final String TAG = "MainActivity";
 
-    private static final String TAG_CAMERA_URI = "CaptureUri";
 
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-
-        requestAppPermissions();
-        setContentView(R.layout.activity_main);
-
-        recButton = ButterKnife.findById(this, R.id.rec_button);
-        preferenceButton = ButterKnife.findById(this, R.id.pref_button);
-        uploadProgress = ButterKnife.findById(this, R.id.upload_progress);
-        captureProgress = ButterKnife.findById(this, R.id.capture_progress);
-        textureFrame = ButterKnife.findById(this, R.id.texture_frame);
-
-        if (savedInstanceState != null) {
-            cameraUri = savedInstanceState.getParcelable(TAG_CAMERA_URI);
-        }
-
-        preferenceButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Intent intent = new Intent(context, SettingActivity.class);
-                startActivity(intent);
-            }
-        });
-
-        assert recButton != null;
-        recButton.setOnTouchListener(new View.OnTouchListener() {
-            @Override
-            public boolean onTouch(View v, MotionEvent event) {
-                if (event.getAction() == MotionEvent.ACTION_DOWN) {
-                    Log.d(TAG, "onActionDown");
-                    isFinishedRecording = false;
-                    recorder.start();
-                    changeStatusBarColor(true);
-                    textureFrame.setBackground(null);
-                    createCameraPreviewSession(); //カメラプレビュー開始
-                } else if (event.getAction() == MotionEvent.ACTION_UP) {
-                    Log.d(TAG, "onActionUp");
-                    isFinishedRecording = true;
-                    recorder.stop();
-                    uploadProgress.setProgress(0);
-                    captureProgress.setVisibility(View.VISIBLE);
-                    changeRecButtonState(false);
-                    changeStatusBarColor(false);
-                }
-                return false;
-            }
-
-            private void changeStatusBarColor(boolean isRec) {
-                Activity activity = (Activity) context;
-                Window window = activity.getWindow();
-                if (isRec) {
-                    window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
-                    window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);
-                    window.setStatusBarColor(ContextCompat.getColor(activity, R.color.colorRecording));
-                } else {
-                    window.setStatusBarColor(ContextCompat.getColor(activity, R.color.colorPrimaryDark));
-                }
-            }
-        });
-
-        ButterKnife.bind(this);
-    }
-
-    private void initSurfaces() {
-        Log.d(TAG, "initSurfaces");
-        captureProgress.setVisibility(View.GONE);
-
-        if (textureView == null) {
-            textureView = ButterKnife.findById(this, R.id.texture);
-        }
-        textureView.setSurfaceTextureListener(previewSurfaceTextureListener);
-
-        imageReader = ImageReader.newInstance(720, 960, ImageFormat.JPEG, 2);
-        imageReader.setOnImageAvailableListener(stillImageReaderAvailableListener, backgroundHandler);
-    }
-
-    private void changeRecButtonState(boolean isEnabled) {
-        recButton.setEnabled(isEnabled);
-    }
-
-    @Override
-    protected void onPause() {
-        super.onPause();
-        closeCamera(camera);
-    }
-
-    @Override
-    protected void onResume() {
-        super.onResume();
-
-        pref = getSharedPreferences(getString(R.string.pref_file_name), MODE_PRIVATE);
-        gyaonId = pref.getString(getString(R.string.id_key), "");
-        Log.d(TAG, "GYAON ID : " + gyaonId);
-
-        GyaonListener gyaonListener = new GyaonListener();
-        recorder = new GyaonRecorder(this, gyaonListener);
-        recorder.setGyaonId(gyaonId);
-
-        initSurfaces();
-    }
-
-    protected void onSaveInstanceState(Bundle outState) {
-        outState.putParcelable(TAG_CAMERA_URI, cameraUri);
-    }
-
-    @Override
-    public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
-        if (key.equals(getString(R.string.id_key))) {
-            gyaonId = sharedPreferences.getString(getString(R.string.id_key), "masuilab");
-        }
-    }
-
-    class GyaonListener {
-        void onUpload(String _key) {
-            Activity activity = (Activity) context;
-            activity.runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    uploadProgress.incrementProgressBy(60);
-                    changeRecButtonState(true);
-                }
-            });
-            if (file != null) {
-                GyazoUploader.uploadImage(file, _key, new GyazoListener());
-            }
-        }
-    }
-
-    class GyazoListener {
-        void onUpload(){
-            uploadProgress.incrementProgressBy(10);
-        }
-        void onLink(){
-            uploadProgress.incrementProgressBy(10);
-        }
-    }
-
-    private void openCamera() {
-        Log.d(TAG, "openCamera");
-        CameraManager manager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
-
-        try {
-            selectedCameraId = manager.getCameraIdList()[0];
-            if (ActivityCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
-                requestAppPermissions();
-                return;
-            }
-            manager.openCamera(selectedCameraId, cameraStateCallback, null);
-        } catch (CameraAccessException e) {
-            e.printStackTrace();
-        }
-    }
-
-    private void createCameraPreviewSession() {
-        Log.d(TAG, "createCameraPreviewSession");
-
-        List<Surface> outputs = Arrays.asList(getSurfaceFromTexture(textureView), imageReader.getSurface());
-        previewRequest = makePreviewRequest();
-        stillRequest = makeStillCaptureRequest();
-
-        try {
-            camera.createCaptureSession(outputs, captureSessionCallBack, null);
-        } catch (CameraAccessException e) {
-            e.printStackTrace();
-        }
-    }
-
-    private CaptureRequest makeStillCaptureRequest() {
-        CaptureRequest.Builder stillCaptureRequestBuilder = null;
-        try {
-            stillCaptureRequestBuilder = camera.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE);
-        } catch (CameraAccessException e) {
-            e.printStackTrace();
-        }
-
-        stillCaptureRequestBuilder.addTarget(imageReader.getSurface());
-
-        try {
-            stillCaptureRequestBuilder.set(CaptureRequest.JPEG_ORIENTATION, (ORIENTATIONS.get(getAppRotation()) + getCameraRotation(selectedCameraId) + 270) % 360);
-        } catch (CameraAccessException e) {
-            e.printStackTrace();
-        }
-
-        return stillCaptureRequestBuilder.build();
-    }
-
-    private CaptureRequest makePreviewRequest() {
-        CaptureRequest.Builder previewRequestBuilder = null;
-        if(camera == null){
-            openCamera();
-        }
-        try {
-            previewRequestBuilder = camera.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
-        } catch (CameraAccessException e) {
-            e.printStackTrace();
-        }
-        previewRequestBuilder.addTarget(getSurfaceFromTexture(textureView));
-        return previewRequestBuilder.build();
-    }
-
-    private Surface getSurfaceFromTexture(TextureView textureView) {
-        SurfaceTexture texture = textureView.getSurfaceTexture();
-        texture.setDefaultBufferSize(960, 720);
-        return new Surface(texture);
-    }
-
-    private CameraCaptureSession.StateCallback captureSessionCallBack = new CameraCaptureSession.StateCallback() {
+    private CameraView.Callback cameraCallback = new CameraView.Callback() {
         @Override
-        public void onConfigured(CameraCaptureSession session) {
-            Log.d(TAG, "capture session onConfigured");
-            if (null == camera) {
-                return;
-            }
-
-            captureSession = session;
-            startPreview();
-        }
-
-        @Override
-        public void onConfigureFailed(CameraCaptureSession session) {
-        }
-    };
-
-    private void startPreview() {
-        Log.d(TAG, "Start preview");
-        try {
-            captureSession.setRepeatingRequest(previewRequest, previewCallback, null);
-        } catch (CameraAccessException e) {
-            e.printStackTrace();
-        }
-    }
-
-    private void stopPreview() {
-        Log.d(TAG, "Stop preview");
-        try {
-            captureSession.stopRepeating();
-        } catch (CameraAccessException e) {
-            e.printStackTrace();
-        }
-    }
-
-    private void startCapture() {
-        Log.d(TAG, "Start capture");
-        try {
-            isProcessing = true;
-            stopPreview();
-            captureSession.capture(stillRequest, stillCallback, null);
-        } catch (CameraAccessException e) {
-            e.printStackTrace();
-        }
-    }
-
-    private final CameraCaptureSession.CaptureCallback previewCallback = new CameraCaptureSession.CaptureCallback() {
-        @Override
-        public void onCaptureProgressed(CameraCaptureSession session, CaptureRequest request, CaptureResult partialResult) {
-        }
-
-        @Override
-        public void onCaptureCompleted(CameraCaptureSession session, CaptureRequest request, TotalCaptureResult result) {
-            if (!isProcessing &&
-                    isFinishedRecording &&
-                    result.get(CaptureResult.CONTROL_AF_STATE).equals(CaptureResult.CONTROL_AF_STATE_PASSIVE_FOCUSED) &&
-                    result.get(CaptureResult.CONTROL_AE_STATE).equals(CaptureResult.CONTROL_AE_STATE_CONVERGED)) {
-                startCapture();
-            } else {
-            }
-        }
-    };
-
-    private final CameraCaptureSession.CaptureCallback stillCallback = new CameraCaptureSession.CaptureCallback() {
-        @Override
-        public void onCaptureProgressed(CameraCaptureSession session, CaptureRequest request, CaptureResult partialResult) {
-        }
-
-        @Override
-        public void onCaptureCompleted(CameraCaptureSession session, CaptureRequest request, TotalCaptureResult result) {
-            Log.d(TAG, "onStillCaptureCompleted");
-            isProcessing = false;
-            captureProgress.setVisibility(View.GONE);
-            textureFrame.setBackground(getDrawable(R.drawable.texture_frame_border));
-        }
-    };
-
-    private void registerDatabase(String file) {
-        ContentValues contentValues = new ContentValues();
-        ContentResolver contentResolver = MainActivity.this.getContentResolver();
-        contentValues.put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg");
-        contentValues.put("_data", file);
-        contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues);
-    }
-
-    private void closeCamera(CameraDevice c) {
-        if (c != null) {
-            Log.d(TAG, "close camera");
-            c.close();
-            camera = null;
-        } else {
-            Log.d(TAG, "camera is null");
-        }
-        if (imageReader != null) {
-            Log.d(TAG, "close imageReader");
-            imageReader.close();
-            imageReader = null;
-        }
-    }
-
-    TextureView.SurfaceTextureListener previewSurfaceTextureListener = new TextureView.SurfaceTextureListener() {
-        @Override
-        public void onSurfaceTextureAvailable(SurfaceTexture surfaceTexture, int i, int i1) {
-            openCamera();
-        }
-
-        @Override
-        public void onSurfaceTextureSizeChanged(SurfaceTexture surfaceTexture, int i, int i1) {
-
-        }
-
-        @Override
-        public boolean onSurfaceTextureDestroyed(SurfaceTexture surfaceTexture) {
-            return false;
-        }
-
-        @Override
-        public void onSurfaceTextureUpdated(SurfaceTexture surfaceTexture) {
-
-        }
-    };
-
-    ImageReader.OnImageAvailableListener stillImageReaderAvailableListener = new ImageReader.OnImageAvailableListener() {
-        @Override
-        public void onImageAvailable(ImageReader reader) {
-            Log.d(TAG, "onImageAvailable");
-
-            Image image = reader.acquireLatestImage();
-            ByteBuffer buf = image.getPlanes()[0].getBuffer();
-            byte[] bytes = new byte[buf.capacity()];
-            buf.get(bytes);
-            file = saveByteToFile(bytes);
+        public void onPictureTaken(CameraView cameraView, byte[] data) {
+            super.onPictureTaken(cameraView, data);
+            Log.d(TAG, "onPictureTaken");
+            file = saveByteToFile(data);
+            cameraView.stop();
+            cameraView.setVisibility(View.GONE);
             uploadProgress.incrementProgressBy(20);
-            image.close();
-            initSurfaces();
+            startPreview(data);
+        }
+
+        private void startPreview(byte[] bytes) {
+            Bitmap bmp;
+            bmp = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
+            previewView.setImageBitmap(bmp);
+            previewFrame.setVisibility(View.VISIBLE);
         }
 
         private File saveByteToFile(byte[] bytes) {
@@ -472,7 +109,6 @@ public class MainActivity extends Activity implements SharedPreferences.OnShared
                         Log.d(TAG, file.getAbsolutePath());
                         registerDatabase(file.getAbsolutePath());
                         outputStream.close();
-                        return file;
                     } catch (IOException e) {
                         Log.d(TAG, "Failed to close stream");
                         e.printStackTrace();
@@ -484,46 +120,133 @@ public class MainActivity extends Activity implements SharedPreferences.OnShared
         }
     };
 
-    private final CameraDevice.StateCallback cameraStateCallback = new CameraDevice.StateCallback() {
-        @Override
-        public void onOpened(CameraDevice cameraDevice) {
-            Log.d(TAG, "camera onOpened");
-            camera = cameraDevice;
-            changeRecButtonState(true);
-        }
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
 
-        @Override
-        public void onDisconnected(CameraDevice cameraDevice) {
-            Log.d(TAG, "camera onDisconnected");
-            closeCamera(cameraDevice);
-        }
+        requestAppPermissions();
+        setContentView(R.layout.activity_main);
 
-        @Override
-        public void onError(CameraDevice cameraDevice, int error) {
-            Log.d(TAG, "camera onError");
-            closeCamera(cameraDevice);
-        }
-    };
+        recButton = ButterKnife.findById(this, R.id.rec_button);
+        preferenceButton = ButterKnife.findById(this, R.id.pref_button);
+        uploadProgress = ButterKnife.findById(this, R.id.upload_progress);
+        cameraView = ButterKnife.findById(this, R.id.cameraview);
+        previewFrame = ButterKnife.findById(this, R.id.preview_frame);
+        previewView = ButterKnife.findById(this, R.id.preview);
 
-    private int getCameraRotation(String id) throws CameraAccessException {
-        CameraManager cameraManager = (CameraManager) getSystemService(CAMERA_SERVICE);
-        CameraCharacteristics characteristics = cameraManager.getCameraCharacteristics(id);
-        return characteristics.get(CameraCharacteristics.SENSOR_ORIENTATION);
+        cameraView.addCallback(cameraCallback);
+
+        preferenceButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent intent = new Intent(context, SettingActivity.class);
+                startActivity(intent);
+            }
+        });
+
+        assert recButton != null;
+        recButton.setOnTouchListener(new View.OnTouchListener() {
+            @Override
+            public boolean onTouch(View v, MotionEvent event) {
+                if (event.getAction() == MotionEvent.ACTION_DOWN) {
+                    Log.d(TAG, "onActionDown");
+                    previewFrame.setVisibility(View.GONE);
+                    cameraView.setVisibility(View.VISIBLE);
+                    recorder.start();
+                    cameraView.start();
+                    changeStatusBarColor(true);
+                } else if (event.getAction() == MotionEvent.ACTION_UP) {
+                    Log.d(TAG, "onActionUp");
+                    recorder.stop();
+                    uploadProgress.setProgress(0);
+                    changeRecButtonState(false);
+                    changeStatusBarColor(false);
+                    cameraView.takePicture();
+                }
+                return false;
+            }
+
+            private void changeStatusBarColor(boolean isRec) {
+                Activity activity = (Activity) context;
+                Window window = activity.getWindow();
+                if (isRec) {
+                    window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
+                    window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);
+                    window.setStatusBarColor(ContextCompat.getColor(activity, R.color.colorRecording));
+                } else {
+                    window.setStatusBarColor(ContextCompat.getColor(activity, R.color.colorPrimaryDark));
+                }
+            }
+        });
+
+        ButterKnife.bind(this);
     }
 
-    private int getAppRotation() {
-        WindowManager windowManager = (WindowManager) getSystemService(Context.WINDOW_SERVICE);
-        int rotation = windowManager.getDefaultDisplay().getRotation();
-        return rotation;
+    private void changeRecButtonState(boolean isEnabled) {
+        recButton.setEnabled(isEnabled);
     }
 
-    private static final SparseIntArray ORIENTATIONS = new SparseIntArray();
+    @Override
+    protected void onPause() {
+        cameraView.stop();
+        super.onPause();
+    }
 
-    static {
-        ORIENTATIONS.append(Surface.ROTATION_0, 90);
-        ORIENTATIONS.append(Surface.ROTATION_90, 0);
-        ORIENTATIONS.append(Surface.ROTATION_180, 270);
-        ORIENTATIONS.append(Surface.ROTATION_270, 180);
+    @Override
+    protected void onResume() {
+        super.onResume();
+        changeRecButtonState(true);
+
+        pref = getSharedPreferences(getString(R.string.pref_file_name), MODE_PRIVATE);
+        gyaonId = pref.getString(getString(R.string.id_key), "");
+        Log.d(TAG, "GYAON ID : " + gyaonId);
+
+        GyaonListener gyaonListener = new GyaonListener();
+        recorder = new GyaonRecorder(this, gyaonListener);
+        recorder.setGyaonId(gyaonId);
+    }
+
+    @Override
+    public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
+        if (key.equals(getString(R.string.id_key))) {
+            gyaonId = sharedPreferences.getString(getString(R.string.id_key), "masuilab");
+        }
+    }
+
+    class GyaonListener {
+        void onUpload(String _key) {
+            Activity activity = (Activity) context;
+            activity.runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    uploadProgress.incrementProgressBy(60);
+                    changeRecButtonState(true);
+                }
+            });
+            if (file != null) {
+                GyazoUploader.uploadImage(file, _key, new GyazoListener());
+                return;
+            }
+            uploadProgress.incrementProgressBy(20);
+        }
+    }
+
+    class GyazoListener {
+        void onUpload() {
+            uploadProgress.incrementProgressBy(10);
+        }
+
+        void onLink() {
+            uploadProgress.incrementProgressBy(10);
+        }
+    }
+
+    private void registerDatabase(String file) {
+        ContentValues contentValues = new ContentValues();
+        ContentResolver contentResolver = MainActivity.this.getContentResolver();
+        contentValues.put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg");
+        contentValues.put("_data", file);
+        contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues);
     }
 
     private void requestAppPermissions() {
@@ -552,7 +275,6 @@ public class MainActivity extends Activity implements SharedPreferences.OnShared
                     finishAndRemoveTask();
                 }
             }
-            openCamera();
         }
     }
 }

@@ -24,29 +24,48 @@
         android:src="@android:drawable/ic_menu_manage" />
 
     <FrameLayout
-        android:id="@+id/texture_frame"
+        android:id="@+id/camera_frame"
         android:layout_width="300dp"
         android:layout_height="400dp"
         android:layout_gravity="center_horizontal"
         android:layout_marginTop="10dp"
         tools:ignore="UselessParent">
 
-        <TextureView
-            android:id="@+id/texture"
-            style="@android:style/Widget.DeviceDefault.Light.ProgressBar.Small"
+        <com.google.android.cameraview.CameraView
+            android:id="@+id/cameraview"
             android:layout_width="match_parent"
-            android:layout_height="400dp" />
+            android:layout_height="match_parent"
+            android:adjustViewBounds="true"
+            android:keepScreenOn="true"
+            app:aspectRatio="4:3"
+            app:autoFocus="true"
+            app:facing="back"
+            app:flash="off" />
 
-        <ProgressBar
-            android:id="@+id/capture_progress"
-            android:layout_width="30dp"
-            android:layout_height="30dp"
-            android:layout_gravity="bottom|right"
-            android:indeterminate="true"
-            android:indeterminateBehavior="cycle"
-            android:progress="100"
-            android:visibility="gone" />
+        <FrameLayout
+            android:id="@+id/preview_frame"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:visibility="gone">
 
+            <ImageView
+                android:id="@+id/preview"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent" />
+
+            <TextView
+                android:id="@+id/preview_mark"
+                android:layout_width="30dp"
+                android:layout_height="30dp"
+                android:layout_gravity="bottom|right"
+                android:alpha="100"
+                android:background="@color/background"
+                android:text="✔"
+                android:textAlignment="center"
+                android:textColor="@color/colorAccentGreen"
+                android:textSize="18sp" />
+
+        </FrameLayout>
     </FrameLayout>
 
     <Button
