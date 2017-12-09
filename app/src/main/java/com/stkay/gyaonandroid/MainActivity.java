@@ -1,49 +1,75 @@
 package com.stkay.gyaonandroid;
 
+import android.Manifest;
+import android.annotation.SuppressLint;
+import android.app.Activity;
+import android.content.ContentResolver;
+import android.content.ContentValues;
+import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
-import android.database.Cursor;
+import android.graphics.ImageFormat;
+import android.graphics.SurfaceTexture;
+import android.hardware.camera2.CameraAccessException;
+import android.hardware.camera2.CameraCaptureSession;
+import android.hardware.camera2.CameraCharacteristics;
+import android.hardware.camera2.CameraDevice;
+import android.hardware.camera2.CameraManager;
+import android.hardware.camera2.CaptureRequest;
+import android.hardware.camera2.CaptureResult;
+import android.hardware.camera2.TotalCaptureResult;
+import android.media.Image;
+import android.media.ImageReader;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.Handler;
 import android.provider.MediaStore;
-import android.provider.Settings;
-import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
-import android.support.v4.content.FileProvider;
-import android.support.v7.app.AppCompatActivity;
-import android.text.Editable;
-import android.text.TextUtils;
-import android.text.TextWatcher;
 import android.util.Log;
+import android.util.SparseIntArray;
 import android.view.MotionEvent;
+import android.view.Surface;
+import android.view.TextureView;
 import android.view.View;
+import android.view.Window;
+import android.view.WindowManager;
 import android.widget.Button;
-import android.widget.EditText;
-import android.widget.Toast;
+import android.widget.FrameLayout;
+import android.widget.ImageButton;
+import android.widget.ProgressBar;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.ByteBuffer;
 import java.text.SimpleDateFormat;
+import java.util.Arrays;
 import java.util.Date;
+import java.util.List;
 import java.util.Locale;
 
 import butterknife.ButterKnife;
-import okhttp3.MediaType;
-import okhttp3.MultipartBody;
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.RequestBody;
-import okhttp3.Response;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends Activity implements SharedPreferences.OnSharedPreferenceChangeListener{
+
+    private Context context = this;
 
     private String gyaonId;
 
-    private Intent intent;
+    private Button recButton;
+
+    private ImageButton preferenceButton;
+
+    private ProgressBar uploadProgress;
+
+    private ProgressBar captureProgress;
+
+    private FrameLayout textureFrame;
 
     private GyaonRecorder recorder;
 
@@ -51,11 +77,27 @@ public class MainActivity extends AppCompatActivity {
 
     private Uri cameraUri;
 
-    String key;
+    private CameraDevice camera;
 
-    private static final int REQUEST_SYSTEM_OVERLAY = 100;
+    private CameraCaptureSession captureSession;
 
-    private static final int REQUEST_CAMERA = 200;
+    private CaptureRequest previewRequest;
+
+    private CaptureRequest stillRequest;
+
+    private String selectedCameraId;
+
+    private TextureView textureView;
+
+    private ImageReader imageReader;
+
+    private Handler backgroundHandler = new Handler();
+
+    private boolean isProcessing = false;
+
+    private boolean isFinishedRecording = false;
+
+    private File file;
 
     private static final String TAG = "MainActivity";
 
@@ -64,64 +106,25 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        requestAppPermissions();
         setContentView(R.layout.activity_main);
 
-        EditText idEditText = ButterKnife.findById(this, R.id.gyaonId);
-        final Button recButton = ButterKnife.findById(this, R.id.rec_button);
-        final Button startServiceButton = ButterKnife.findById(this, R.id.start_service_button);
-
-        pref = getSharedPreferences("pref", MODE_PRIVATE);
-        gyaonId = pref.getString("gyaonId", "");
-        assert idEditText != null;
-        idEditText.setText(gyaonId);
-
-        UploadListener uploadListener = new UploadListener();
-
-        recorder = new GyaonRecorder(this, uploadListener);
-        recorder.setGyaonId(gyaonId);
-
-        ButterKnife.bind(this);
-
-        //request permissions
-        if (Build.VERSION.SDK_INT >= 23) {
-            if (ContextCompat.checkSelfPermission(this, "android.permission.RECORD_AUDIO") != PackageManager.PERMISSION_GRANTED ||
-                    ContextCompat.checkSelfPermission(this, "android.permission.WRITE_EXTERNAL_STORAGE") != PackageManager.PERMISSION_GRANTED ||
-                    ContextCompat.checkSelfPermission(this, "android.permission.ACCESS_COARSE_LOCATION") != PackageManager.PERMISSION_GRANTED ||
-                    ContextCompat.checkSelfPermission(this, "android.permission.ACCESS_FINE_LOCATION") != PackageManager.PERMISSION_GRANTED ||
-                    ContextCompat.checkSelfPermission(this, "android.permission.WRITE_EXTERNAL_STORAGE") != PackageManager.PERMISSION_GRANTED) {
-                ActivityCompat.requestPermissions(this, new String[]{
-                        "android.permission.RECORD_AUDIO",
-                        "android.permission.WRITE_EXTERNAL_STORAGE",
-                        "android.permission.ACCESS_COARSE_LOCATION",
-                        "android.permission.ACCESS_FINE_LOCATION",
-                        "android.permission.WRITE_EXTERNAL_STORAGE"}, 0);
-            }
-            if (!checkOverlayPermission()) {
-                requestOverlayPermission();
-            }
-        }
+        recButton = ButterKnife.findById(this, R.id.rec_button);
+        preferenceButton = ButterKnife.findById(this, R.id.pref_button);
+        uploadProgress = ButterKnife.findById(this, R.id.upload_progress);
+        captureProgress = ButterKnife.findById(this, R.id.capture_progress);
+        textureFrame = ButterKnife.findById(this, R.id.texture_frame);
 
         if (savedInstanceState != null) {
             cameraUri = savedInstanceState.getParcelable(TAG_CAMERA_URI);
         }
 
-        idEditText.addTextChangedListener(new TextWatcher() {
+        preferenceButton.setOnClickListener(new View.OnClickListener() {
             @Override
-            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
-            }
-
-            @Override
-            public void onTextChanged(CharSequence s, int start, int before, int count) {
-                Log.d(TAG, s.toString());
-                gyaonId = s.toString();
-                SharedPreferences.Editor editor = pref.edit();
-                editor.putString("gyaonId", gyaonId);
-                editor.apply();
-                recorder.setGyaonId(gyaonId);
-            }
-
-            @Override
-            public void afterTextChanged(Editable s) {
+            public void onClick(View v) {
+                Intent intent = new Intent(context, SettingActivity.class);
+                startActivity(intent);
             }
         });
 
@@ -131,95 +134,425 @@ public class MainActivity extends AppCompatActivity {
             public boolean onTouch(View v, MotionEvent event) {
                 if (event.getAction() == MotionEvent.ACTION_DOWN) {
                     Log.d(TAG, "onActionDown");
+                    isFinishedRecording = false;
                     recorder.start();
+                    changeStatusBarColor(true);
+                    textureFrame.setBackground(null);
+                    createCameraPreviewSession(); //カメラプレビュー開始
                 } else if (event.getAction() == MotionEvent.ACTION_UP) {
                     Log.d(TAG, "onActionUp");
+                    isFinishedRecording = true;
                     recorder.stop();
+                    uploadProgress.setProgress(0);
+                    captureProgress.setVisibility(View.VISIBLE);
+                    changeRecButtonState(false);
+                    changeStatusBarColor(false);
                 }
-                return true;
+                return false;
+            }
+
+            private void changeStatusBarColor(boolean isRec) {
+                Activity activity = (Activity) context;
+                Window window = activity.getWindow();
+                if (isRec) {
+                    window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
+                    window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);
+                    window.setStatusBarColor(ContextCompat.getColor(activity, R.color.colorRecording));
+                } else {
+                    window.setStatusBarColor(ContextCompat.getColor(activity, R.color.colorPrimaryDark));
+                }
             }
         });
-        startServiceButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                startService();
-            }
-        });
+
+        ButterKnife.bind(this);
+    }
+
+    private void initSurfaces() {
+        Log.d(TAG, "initSurfaces");
+        captureProgress.setVisibility(View.GONE);
+
+        if (textureView == null) {
+            textureView = ButterKnife.findById(this, R.id.texture);
+        }
+        textureView.setSurfaceTextureListener(previewSurfaceTextureListener);
+
+        imageReader = ImageReader.newInstance(720, 960, ImageFormat.JPEG, 2);
+        imageReader.setOnImageAvailableListener(stillImageReaderAvailableListener, backgroundHandler);
+    }
+
+    private void changeRecButtonState(boolean isEnabled) {
+        recButton.setEnabled(isEnabled);
     }
 
     @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        stopService();
+    protected void onPause() {
+        super.onPause();
+        closeCamera(camera);
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+
+        pref = getSharedPreferences(getString(R.string.pref_file_name), MODE_PRIVATE);
+        gyaonId = pref.getString(getString(R.string.id_key), "");
+        Log.d(TAG, "GYAON ID : " + gyaonId);
+
+        GyaonListener gyaonListener = new GyaonListener();
+        recorder = new GyaonRecorder(this, gyaonListener);
+        recorder.setGyaonId(gyaonId);
+
+        initSurfaces();
     }
 
     protected void onSaveInstanceState(Bundle outState) {
         outState.putParcelable(TAG_CAMERA_URI, cameraUri);
     }
 
-    private void startService() {
-        intent = new Intent(this, FloatingRecButtonService.class);
-        intent.putExtra("gyaonId", gyaonId);
-        startService(intent);
-    }
-
-    private void stopService() {
-        stopService(intent);
-    }
-
-    private Boolean checkOverlayPermission() {
-        return Settings.canDrawOverlays(this);
-    }
-
-    public void requestOverlayPermission() {
-        Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + getPackageName()));
-        this.startActivityForResult(intent, REQUEST_SYSTEM_OVERLAY);
-    }
-
-    private void cameraIntent() {
-        File cameraFolder = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), "IMG");
-        cameraFolder.mkdirs();
-
-        String timeStamp = new SimpleDateFormat("yyyyMMddHHmmss", Locale.JAPAN).format(new Date());
-
-        String imageFileName = "JPEG-" + timeStamp + "-";
-        File storageDir = getExternalFilesDir(Environment.DIRECTORY_PICTURES);
-        File image;
-
-        try {
-            image = File.createTempFile(imageFileName, ".jpg", storageDir);
-
-        } catch (IOException e) {
-            Toast.makeText(this, "Failed to launch camera", Toast.LENGTH_SHORT).show();
-            e.printStackTrace();
-            return;
-        }
-
-        cameraUri = FileProvider.getUriForFile(this, getPackageName(), image);
-
-        Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-        intent.putExtra(MediaStore.EXTRA_OUTPUT, cameraUri);
-        startActivityForResult(intent, REQUEST_CAMERA);
-        Log.d(TAG, "Launch camera");
-    }
-
     @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        if (requestCode == REQUEST_SYSTEM_OVERLAY) {
-            if (!checkOverlayPermission()) {
-                requestOverlayPermission();
+    public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
+        if (key.equals(getString(R.string.id_key))) {
+            gyaonId = sharedPreferences.getString(getString(R.string.id_key), "masuilab");
+        }
+    }
+
+    class GyaonListener {
+        void onUpload(String _key) {
+            Activity activity = (Activity) context;
+            activity.runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    uploadProgress.incrementProgressBy(60);
+                    changeRecButtonState(true);
+                }
+            });
+            if (file != null) {
+                GyazoUploader.uploadImage(file, _key, new GyazoListener());
             }
         }
-        if (requestCode == REQUEST_CAMERA) {
-            GyazoUploader uploader = new GyazoUploader(this, gyaonId);
-            uploader.uploadImage(cameraUri, key);
+    }
+
+    class GyazoListener {
+        void onUpload(){
+            uploadProgress.incrementProgressBy(10);
+        }
+        void onLink(){
+            uploadProgress.incrementProgressBy(10);
         }
     }
 
-    class UploadListener {
-        void onUpload(String _key) {
-            key = _key;
-            cameraIntent();
+    private void openCamera() {
+        Log.d(TAG, "openCamera");
+        CameraManager manager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
+
+        try {
+            selectedCameraId = manager.getCameraIdList()[0];
+            if (ActivityCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+                requestAppPermissions();
+                return;
+            }
+            manager.openCamera(selectedCameraId, cameraStateCallback, null);
+        } catch (CameraAccessException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void createCameraPreviewSession() {
+        Log.d(TAG, "createCameraPreviewSession");
+
+        List<Surface> outputs = Arrays.asList(getSurfaceFromTexture(textureView), imageReader.getSurface());
+        previewRequest = makePreviewRequest();
+        stillRequest = makeStillCaptureRequest();
+
+        try {
+            camera.createCaptureSession(outputs, captureSessionCallBack, null);
+        } catch (CameraAccessException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private CaptureRequest makeStillCaptureRequest() {
+        CaptureRequest.Builder stillCaptureRequestBuilder = null;
+        try {
+            stillCaptureRequestBuilder = camera.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE);
+        } catch (CameraAccessException e) {
+            e.printStackTrace();
+        }
+
+        stillCaptureRequestBuilder.addTarget(imageReader.getSurface());
+
+        try {
+            stillCaptureRequestBuilder.set(CaptureRequest.JPEG_ORIENTATION, (ORIENTATIONS.get(getAppRotation()) + getCameraRotation(selectedCameraId) + 270) % 360);
+        } catch (CameraAccessException e) {
+            e.printStackTrace();
+        }
+
+        return stillCaptureRequestBuilder.build();
+    }
+
+    private CaptureRequest makePreviewRequest() {
+        CaptureRequest.Builder previewRequestBuilder = null;
+        if(camera == null){
+            openCamera();
+        }
+        try {
+            previewRequestBuilder = camera.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
+        } catch (CameraAccessException e) {
+            e.printStackTrace();
+        }
+        previewRequestBuilder.addTarget(getSurfaceFromTexture(textureView));
+        return previewRequestBuilder.build();
+    }
+
+    private Surface getSurfaceFromTexture(TextureView textureView) {
+        SurfaceTexture texture = textureView.getSurfaceTexture();
+        texture.setDefaultBufferSize(960, 720);
+        return new Surface(texture);
+    }
+
+    private CameraCaptureSession.StateCallback captureSessionCallBack = new CameraCaptureSession.StateCallback() {
+        @Override
+        public void onConfigured(CameraCaptureSession session) {
+            Log.d(TAG, "capture session onConfigured");
+            if (null == camera) {
+                return;
+            }
+
+            captureSession = session;
+            startPreview();
+        }
+
+        @Override
+        public void onConfigureFailed(CameraCaptureSession session) {
+        }
+    };
+
+    private void startPreview() {
+        Log.d(TAG, "Start preview");
+        try {
+            captureSession.setRepeatingRequest(previewRequest, previewCallback, null);
+        } catch (CameraAccessException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void stopPreview() {
+        Log.d(TAG, "Stop preview");
+        try {
+            captureSession.stopRepeating();
+        } catch (CameraAccessException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void startCapture() {
+        Log.d(TAG, "Start capture");
+        try {
+            isProcessing = true;
+            stopPreview();
+            captureSession.capture(stillRequest, stillCallback, null);
+        } catch (CameraAccessException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private final CameraCaptureSession.CaptureCallback previewCallback = new CameraCaptureSession.CaptureCallback() {
+        @Override
+        public void onCaptureProgressed(CameraCaptureSession session, CaptureRequest request, CaptureResult partialResult) {
+        }
+
+        @Override
+        public void onCaptureCompleted(CameraCaptureSession session, CaptureRequest request, TotalCaptureResult result) {
+            if (!isProcessing &&
+                    isFinishedRecording &&
+                    result.get(CaptureResult.CONTROL_AF_STATE).equals(CaptureResult.CONTROL_AF_STATE_PASSIVE_FOCUSED) &&
+                    result.get(CaptureResult.CONTROL_AE_STATE).equals(CaptureResult.CONTROL_AE_STATE_CONVERGED)) {
+                startCapture();
+            } else {
+            }
+        }
+    };
+
+    private final CameraCaptureSession.CaptureCallback stillCallback = new CameraCaptureSession.CaptureCallback() {
+        @Override
+        public void onCaptureProgressed(CameraCaptureSession session, CaptureRequest request, CaptureResult partialResult) {
+        }
+
+        @Override
+        public void onCaptureCompleted(CameraCaptureSession session, CaptureRequest request, TotalCaptureResult result) {
+            Log.d(TAG, "onStillCaptureCompleted");
+            isProcessing = false;
+            captureProgress.setVisibility(View.GONE);
+            textureFrame.setBackground(getDrawable(R.drawable.texture_frame_border));
+        }
+    };
+
+    private void registerDatabase(String file) {
+        ContentValues contentValues = new ContentValues();
+        ContentResolver contentResolver = MainActivity.this.getContentResolver();
+        contentValues.put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg");
+        contentValues.put("_data", file);
+        contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues);
+    }
+
+    private void closeCamera(CameraDevice c) {
+        if (c != null) {
+            Log.d(TAG, "close camera");
+            c.close();
+            camera = null;
+        } else {
+            Log.d(TAG, "camera is null");
+        }
+        if (imageReader != null) {
+            Log.d(TAG, "close imageReader");
+            imageReader.close();
+            imageReader = null;
+        }
+    }
+
+    TextureView.SurfaceTextureListener previewSurfaceTextureListener = new TextureView.SurfaceTextureListener() {
+        @Override
+        public void onSurfaceTextureAvailable(SurfaceTexture surfaceTexture, int i, int i1) {
+            openCamera();
+        }
+
+        @Override
+        public void onSurfaceTextureSizeChanged(SurfaceTexture surfaceTexture, int i, int i1) {
+
+        }
+
+        @Override
+        public boolean onSurfaceTextureDestroyed(SurfaceTexture surfaceTexture) {
+            return false;
+        }
+
+        @Override
+        public void onSurfaceTextureUpdated(SurfaceTexture surfaceTexture) {
+
+        }
+    };
+
+    ImageReader.OnImageAvailableListener stillImageReaderAvailableListener = new ImageReader.OnImageAvailableListener() {
+        @Override
+        public void onImageAvailable(ImageReader reader) {
+            Log.d(TAG, "onImageAvailable");
+
+            Image image = reader.acquireLatestImage();
+            ByteBuffer buf = image.getPlanes()[0].getBuffer();
+            byte[] bytes = new byte[buf.capacity()];
+            buf.get(bytes);
+            file = saveByteToFile(bytes);
+            uploadProgress.incrementProgressBy(20);
+            image.close();
+            initSurfaces();
+        }
+
+        private File saveByteToFile(byte[] bytes) {
+            String timeStamp = new SimpleDateFormat("yyyyMMddHHmmss", Locale.JAPAN).format(new Date());
+            String imageFileName = "JPEG-" + timeStamp;
+
+            File storageDir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), "Gyaon");
+            storageDir.mkdirs();
+            File file = null;
+            OutputStream outputStream = null;
+
+            try {
+                file = File.createTempFile(imageFileName, ".jpg", storageDir);
+                outputStream = new FileOutputStream(file);
+                outputStream.write(bytes);
+            } catch (IOException e) {
+                //TODO 再試行するとか
+                Log.d(TAG, "Failed to save jpg file");
+                e.printStackTrace();
+            } finally {
+                //TODO try-with-resources
+                if (outputStream != null) {
+                    try {
+                        Log.d(TAG, "Succeeded to save jpg file");
+                        Log.d(TAG, file.getAbsolutePath());
+                        registerDatabase(file.getAbsolutePath());
+                        outputStream.close();
+                        return file;
+                    } catch (IOException e) {
+                        Log.d(TAG, "Failed to close stream");
+                        e.printStackTrace();
+                    }
+                }
+            }
+
+            return file;
+        }
+    };
+
+    private final CameraDevice.StateCallback cameraStateCallback = new CameraDevice.StateCallback() {
+        @Override
+        public void onOpened(CameraDevice cameraDevice) {
+            Log.d(TAG, "camera onOpened");
+            camera = cameraDevice;
+            changeRecButtonState(true);
+        }
+
+        @Override
+        public void onDisconnected(CameraDevice cameraDevice) {
+            Log.d(TAG, "camera onDisconnected");
+            closeCamera(cameraDevice);
+        }
+
+        @Override
+        public void onError(CameraDevice cameraDevice, int error) {
+            Log.d(TAG, "camera onError");
+            closeCamera(cameraDevice);
+        }
+    };
+
+    private int getCameraRotation(String id) throws CameraAccessException {
+        CameraManager cameraManager = (CameraManager) getSystemService(CAMERA_SERVICE);
+        CameraCharacteristics characteristics = cameraManager.getCameraCharacteristics(id);
+        return characteristics.get(CameraCharacteristics.SENSOR_ORIENTATION);
+    }
+
+    private int getAppRotation() {
+        WindowManager windowManager = (WindowManager) getSystemService(Context.WINDOW_SERVICE);
+        int rotation = windowManager.getDefaultDisplay().getRotation();
+        return rotation;
+    }
+
+    private static final SparseIntArray ORIENTATIONS = new SparseIntArray();
+
+    static {
+        ORIENTATIONS.append(Surface.ROTATION_0, 90);
+        ORIENTATIONS.append(Surface.ROTATION_90, 0);
+        ORIENTATIONS.append(Surface.ROTATION_180, 270);
+        ORIENTATIONS.append(Surface.ROTATION_270, 180);
+    }
+
+    private void requestAppPermissions() {
+        if (Build.VERSION.SDK_INT >= 23) {
+            if (ContextCompat.checkSelfPermission(this, "android.permission.RECORD_AUDIO") != PackageManager.PERMISSION_GRANTED ||
+                    ContextCompat.checkSelfPermission(this, "android.permission.WRITE_EXTERNAL_STORAGE") != PackageManager.PERMISSION_GRANTED ||
+                    ContextCompat.checkSelfPermission(this, "android.permission.ACCESS_COARSE_LOCATION") != PackageManager.PERMISSION_GRANTED ||
+                    ContextCompat.checkSelfPermission(this, "android.permission.ACCESS_FINE_LOCATION") != PackageManager.PERMISSION_GRANTED ||
+                    ContextCompat.checkSelfPermission(this, "android.permission.CAMERA") != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(this, new String[]{
+                        "android.permission.RECORD_AUDIO",
+                        "android.permission.WRITE_EXTERNAL_STORAGE",
+                        "android.permission.ACCESS_COARSE_LOCATION",
+                        "android.permission.ACCESS_FINE_LOCATION",
+                        "android.permission.CAMERA"}, 0);
+            }
+        }
+    }
+
+    @SuppressLint("MissingPermission")
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        if (grantResults.length > 0) {
+            for (int result : grantResults) {
+                if (result == -1) {
+                    finishAndRemoveTask();
+                }
+            }
+            openCamera();
         }
     }
 }
