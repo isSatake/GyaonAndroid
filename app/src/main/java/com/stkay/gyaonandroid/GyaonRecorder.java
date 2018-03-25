@@ -146,12 +146,15 @@ class GyaonRecorder {
         public void run() throws SecurityException {
             mediaRecorder.stop();
             mediaRecorder.reset();
+            Toast.makeText(context, "Stop Recording", Toast.LENGTH_SHORT).show();
 
-            Criteria criteria = new Criteria();
-            criteria.setAccuracy(Criteria.ACCURACY_FINE);
-            locationManager.requestSingleUpdate(criteria, new LocationListener() {
+            //既存のHandlerを使うという選択肢はないのか？
+            //録音停止毎にhandlerを生成するのはいかがなものか？
+
+            final LocationListener listener = new LocationListener(){
                 @Override
                 public void onLocationChanged(Location location) {
+                    Log.d(TAG, "onLocationChanged");
                     upload(location);
                 }
 
@@ -165,11 +168,24 @@ class GyaonRecorder {
 
                 @Override
                 public void onProviderDisabled(String provider) {
+                    Log.d(TAG, "onLocationProviderDisabled");
                     upload(null);
                 }
-            }, null);
+            };
 
-            Toast.makeText(context, "Stop Recording", Toast.LENGTH_SHORT).show();
+            Criteria criteria = new Criteria();
+            criteria.setAccuracy(Criteria.ACCURACY_FINE);
+            locationManager.requestSingleUpdate(criteria, listener, null);
+
+            new Handler().postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    Log.d(TAG, "onLocationTimeout");
+                    locationManager.removeUpdates(listener);
+                    upload(null);
+                }
+            }, 3000);
+
         }
     };
 }
