@@ -44,6 +44,8 @@ public class MainActivity extends Activity implements SharedPreferences.OnShared
 
     private String gyaonId;
 
+    private Boolean isCameraActive;
+
     private Button recButton;
 
     private ImageButton preferenceButton;
@@ -150,18 +152,24 @@ public class MainActivity extends Activity implements SharedPreferences.OnShared
             public boolean onTouch(View v, MotionEvent event) {
                 if (event.getAction() == MotionEvent.ACTION_DOWN) {
                     Log.d(TAG, "onActionDown");
-                    previewFrame.setVisibility(View.GONE);
-                    cameraView.setVisibility(View.VISIBLE);
                     recorder.start();
-                    cameraView.start();
                     changeStatusBarColor(true);
+                    if(isCameraActive) {
+                        previewFrame.setVisibility(View.GONE);
+                        cameraView.setVisibility(View.VISIBLE);
+                        cameraView.start();
+                    }
                 } else if (event.getAction() == MotionEvent.ACTION_UP) {
                     Log.d(TAG, "onActionUp");
                     recorder.stop();
                     uploadProgress.setProgress(0);
                     changeRecButtonState(false);
                     changeStatusBarColor(false);
-                    cameraView.takePicture();
+                    if(isCameraActive){
+                        cameraView.takePicture();
+                    }else{
+                        uploadProgress.incrementProgressBy(20);
+                    }
                 }
                 return false;
             }
@@ -188,7 +196,9 @@ public class MainActivity extends Activity implements SharedPreferences.OnShared
 
     @Override
     protected void onPause() {
-        cameraView.stop();
+        if(isCameraActive) {
+            cameraView.stop();
+        }
         super.onPause();
     }
 
@@ -198,18 +208,28 @@ public class MainActivity extends Activity implements SharedPreferences.OnShared
         changeRecButtonState(true);
 
         pref = getSharedPreferences(getString(R.string.pref_file_name), MODE_PRIVATE);
+        isCameraActive = pref.getBoolean(getString(R.string.id_is_camera_active), false);
         gyaonId = pref.getString(getString(R.string.id_key), "");
         Log.d(TAG, "GYAON ID : " + gyaonId);
+        Log.d(TAG, "IS CAMERA ACTIVE : " + isCameraActive);
 
         GyaonListener gyaonListener = new GyaonListener();
         recorder = new GyaonRecorder(this, gyaonListener);
         recorder.setGyaonId(gyaonId);
+
+        if(!isCameraActive) {
+            previewFrame.setVisibility(View.GONE);
+        }
     }
 
     @Override
     public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
         if (key.equals(getString(R.string.id_key))) {
             gyaonId = sharedPreferences.getString(getString(R.string.id_key), "masuilab");
+        }
+
+        if(key.equals(getString(R.string.id_is_camera_active))) {
+            isCameraActive = sharedPreferences.getBoolean(getString(R.string.id_is_camera_active), true);
         }
     }
 
@@ -219,15 +239,18 @@ public class MainActivity extends Activity implements SharedPreferences.OnShared
             activity.runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
-                    uploadProgress.incrementProgressBy(60);
                     changeRecButtonState(true);
                 }
             });
+
+            uploadProgress.incrementProgressBy(60);
+
             if (file != null) {
                 GyazoUploader.uploadImage(file, _key, new GyazoListener());
-                return;
+                file = null;
+            }else{
+                uploadProgress.incrementProgressBy(20);
             }
-            uploadProgress.incrementProgressBy(20);
         }
     }
 

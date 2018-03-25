@@ -7,5 +7,9 @@
             android:key="@string/id_key"
             android:title="録音先のGyaon Id" />
 
+        <CheckBoxPreference
+            android:key="@string/id_is_camera_active"
+            android:title="カメラ" />
+
     </PreferenceCategory>
 </PreferenceScreen>
